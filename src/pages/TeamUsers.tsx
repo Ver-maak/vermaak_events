@@ -13,12 +13,22 @@ const TeamUsers = () => {
   const { data: users, isLoading } = useQuery({
     queryKey: ["team-users"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: profiles, error } = await supabase
         .from("profiles")
-        .select("*, user_roles(role)")
+        .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      
+      const userIds = profiles?.map(p => p.id) || [];
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("user_id", userIds);
+      
+      return profiles?.map(p => ({
+        ...p,
+        user_roles: rolesData?.filter(r => r.user_id === p.id) || [],
+      })) || [];
     },
   });
 
