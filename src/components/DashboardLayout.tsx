@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   Wallet, LayoutDashboard, Users, Building2, ArrowLeftRight,
-  Settings, LogOut, Menu, X, Shield, ChevronDown, Bell
+  Settings, LogOut, Menu, X, Shield, ChevronDown, Bell, Percent
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -36,6 +36,9 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
     ] : []),
     { label: "Wallets", href: "/dashboard/wallets", icon: <Wallet className="h-4 w-4" /> },
     { label: "Transactions", href: "/dashboard/transactions", icon: <ArrowLeftRight className="h-4 w-4" /> },
+    ...(isSuperAdmin ? [
+      { label: "Fee Management", href: "/dashboard/fees", icon: <Percent className="h-4 w-4" /> },
+    ] : []),
     ...(isSuperAdmin || isTenantAdmin ? [
       { label: "Settings", href: "/dashboard/settings", icon: <Settings className="h-4 w-4" /> },
     ] : []),

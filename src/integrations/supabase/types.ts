@@ -58,6 +58,155 @@ export type Database = {
           },
         ]
       }
+      exchange_rates: {
+        Row: {
+          created_at: string
+          currency: Database["public"]["Enums"]["currency_code"]
+          id: string
+          rate_to_ugx: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency: Database["public"]["Enums"]["currency_code"]
+          id?: string
+          rate_to_ugx: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: Database["public"]["Enums"]["currency_code"]
+          id?: string
+          rate_to_ugx?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      fee_audit_logs: {
+        Row: {
+          created_at: string
+          exchange_rate: number | null
+          fee_original_currency: number
+          fee_ugx: number
+          id: string
+          net_amount: number
+          organization_id: string | null
+          original_amount: number
+          original_currency: Database["public"]["Enums"]["currency_code"]
+          tier_label: string
+          transaction_id: string | null
+          ugx_equivalent: number
+        }
+        Insert: {
+          created_at?: string
+          exchange_rate?: number | null
+          fee_original_currency: number
+          fee_ugx: number
+          id?: string
+          net_amount: number
+          organization_id?: string | null
+          original_amount: number
+          original_currency: Database["public"]["Enums"]["currency_code"]
+          tier_label: string
+          transaction_id?: string | null
+          ugx_equivalent: number
+        }
+        Update: {
+          created_at?: string
+          exchange_rate?: number | null
+          fee_original_currency?: number
+          fee_ugx?: number
+          id?: string
+          net_amount?: number
+          organization_id?: string | null
+          original_amount?: number
+          original_currency?: Database["public"]["Enums"]["currency_code"]
+          tier_label?: string
+          transaction_id?: string | null
+          ugx_equivalent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_audit_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_audit_logs_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fee_tiers: {
+        Row: {
+          created_at: string
+          currency: Database["public"]["Enums"]["currency_code"]
+          fee_type: string
+          fee_value: number
+          id: string
+          is_active: boolean
+          max_amount: number | null
+          max_fee: number | null
+          min_amount: number
+          min_fee: number | null
+          organization_id: string | null
+          sort_order: number
+          tier_label: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          currency?: Database["public"]["Enums"]["currency_code"]
+          fee_type: string
+          fee_value: number
+          id?: string
+          is_active?: boolean
+          max_amount?: number | null
+          max_fee?: number | null
+          min_amount?: number
+          min_fee?: number | null
+          organization_id?: string | null
+          sort_order?: number
+          tier_label: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          currency?: Database["public"]["Enums"]["currency_code"]
+          fee_type?: string
+          fee_value?: number
+          id?: string
+          is_active?: boolean
+          max_amount?: number | null
+          max_fee?: number | null
+          min_amount?: number
+          min_fee?: number | null
+          organization_id?: string | null
+          sort_order?: number
+          tier_label?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_tiers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -286,6 +435,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_transaction_fee: {
+        Args: {
+          _amount: number
+          _currency: Database["public"]["Enums"]["currency_code"]
+          _organization_id?: string
+        }
+        Returns: Json
+      }
       get_user_org: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
