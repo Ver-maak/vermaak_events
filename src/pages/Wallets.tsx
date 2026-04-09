@@ -150,6 +150,13 @@ const Wallets = () => {
                     placeholder="Payment for..."
                   />
                 </div>
+                {transferData.fromWalletId && parseFloat(transferData.amount) > 0 && (
+                  <FeeBreakdown
+                    amount={parseFloat(transferData.amount)}
+                    currency={wallets?.find(w => w.id === transferData.fromWalletId)?.currency || "UGX"}
+                    organizationId={wallets?.find(w => w.id === transferData.fromWalletId)?.organization_id}
+                  />
+                )}
                 <Button onClick={handleTransfer} className="w-full" disabled={transferMutation.isPending}>
                   {transferMutation.isPending ? "Processing..." : "Send Transfer"}
                 </Button>

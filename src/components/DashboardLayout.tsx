@@ -36,6 +36,9 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
     ] : []),
     { label: "Wallets", href: "/dashboard/wallets", icon: <Wallet className="h-4 w-4" /> },
     { label: "Transactions", href: "/dashboard/transactions", icon: <ArrowLeftRight className="h-4 w-4" /> },
+    ...(isSuperAdmin ? [
+      { label: "Fee Management", href: "/dashboard/fees", icon: <Percent className="h-4 w-4" /> },
+    ] : []),
     ...(isSuperAdmin || isTenantAdmin ? [
       { label: "Settings", href: "/dashboard/settings", icon: <Settings className="h-4 w-4" /> },
     ] : []),
