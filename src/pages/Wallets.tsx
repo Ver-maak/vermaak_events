@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { Wallet, Send, Plus, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import FeeBreakdown from "@/components/FeeBreakdown";
 import type { Database } from "@/integrations/supabase/types";
 
 type CurrencyCode = Database["public"]["Enums"]["currency_code"];
