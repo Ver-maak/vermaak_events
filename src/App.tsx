@@ -12,6 +12,7 @@ import Transactions from "./pages/Transactions";
 import Organizations from "./pages/Organizations";
 import TeamUsers from "./pages/TeamUsers";
 import DashboardSettings from "./pages/DashboardSettings";
+import FeeManagement from "./pages/FeeManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
