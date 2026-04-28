@@ -376,7 +376,121 @@ const FeeManagement = () => {
             </Card>
           </TabsContent>
 
+          <TabsContent value="simulator" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5" />
+                  Fee Simulator
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Preview fee calculations without making transfers. Read-only — no audit logs are written.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label>Amount</Label>
+                    <Input
+                      type="number"
+                      placeholder="e.g. 150000"
+                      value={simAmount}
+                      onChange={(e) => setSimAmount(e.target.value)}
+                      min="0"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Currency</Label>
+                    <Select value={simCurrency} onValueChange={setSimCurrency}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {rates?.map((r) => (
+                          <SelectItem key={r.id} value={r.currency}>{r.currency}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Organization (optional)</Label>
+                    <Select value={simOrgId} onValueChange={setSimOrgId}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__global__">Global pricing</SelectItem>
+                        {organizations?.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => simulateMutation.mutate()}
+                    disabled={simulateMutation.isPending || !simAmount || parseFloat(simAmount) <= 0}
+                  >
+                    {simulateMutation.isPending ? "Calculating..." : "Calculate Fee"}
+                  </Button>
+                  <Button variant="ghost" onClick={resetSimulator}>Reset</Button>
+                </div>
+
+                {simResult && (
+                  <Card className="bg-muted/30 border-dashed">
+                    <CardContent className="pt-6 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Matched Tier</span>
+                        <Badge>{simResult.tier_label}</Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground">Amount</div>
+                          <div className="font-medium">{formatCurrency(parseFloat(simAmount), simCurrency)}</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground">Fee ({simCurrency})</div>
+                          <div className="font-medium text-primary">{formatCurrency(Number(simResult.fee), simCurrency)}</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground">Fee (UGX equivalent)</div>
+                          <div className="font-medium">{formatCurrency(Number(simResult.fee_ugx))}</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground">Net Received</div>
+                          <div className="font-medium">{formatCurrency(Number(simResult.net_amount), simCurrency)}</div>
+                        </div>
+                        {simCurrency !== "UGX" && (
+                          <>
+                            <div className="space-y-1">
+                              <div className="text-muted-foreground">Exchange Rate</div>
+                              <div className="font-medium">1 {simCurrency} = {Number(simResult.exchange_rate).toLocaleString()} UGX</div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-muted-foreground">UGX Equivalent</div>
+                              <div className="font-medium">{formatCurrency(Number(simResult.ugx_equivalent))}</div>
+                            </div>
+                          </>
+                        )}
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground">Fee Type</div>
+                          <div className="font-medium capitalize">
+                            {simResult.fee_type} {simResult.fee_type === "percentage" ? `(${simResult.fee_value}%)` : ""}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground">Effective Rate</div>
+                          <div className="font-medium">
+                            {((Number(simResult.fee) / parseFloat(simAmount)) * 100).toFixed(3)}%
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="audit" className="mt-4">
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
