@@ -113,7 +113,53 @@ const FeeManagement = () => {
     onError: (e: Error) => toast({ title: "Failed to save tier", description: e.message, variant: "destructive" }),
   });
 
-  if (!isSuperAdmin) {
+  // Organizations (for tenant-specific simulation)
+  const { data: organizations } = useQuery({
+    queryKey: ["organizations-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("organizations").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fee simulator state
+  const [simAmount, setSimAmount] = useState<string>("");
+  const [simCurrency, setSimCurrency] = useState<string>("UGX");
+  const [simOrgId, setSimOrgId] = useState<string>("__global__");
+  const [simResult, setSimResult] = useState<any>(null);
+
+  const simulateMutation = useMutation({
+    mutationFn: async () => {
+      const amt = parseFloat(simAmount);
+      if (!amt || amt <= 0) throw new Error("Enter a positive amount");
+      // Read-only preview: estimate-fee invokes calculate_transaction_fee (STABLE),
+      // which does not write to fee_audit_logs. Logs are only written by transfer_funds.
+      const { data, error } = await supabase.functions.invoke("estimate-fee", {
+        body: {
+          amount: amt,
+          currency: simCurrency,
+          organization_id: simOrgId === "__global__" ? null : simOrgId,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => setSimResult(data),
+    onError: (e: Error) => {
+      setSimResult(null);
+      toast({ title: "Calculation failed", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const resetSimulator = () => {
+    setSimAmount("");
+    setSimCurrency("UGX");
+    setSimOrgId("__global__");
+    setSimResult(null);
+  };
+
     return (
       <DashboardLayout>
         <div className="text-center py-12">
