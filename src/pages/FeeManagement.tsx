@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Edit, DollarSign, Percent, RefreshCw } from "lucide-react";
+import { Plus, Edit, DollarSign, Percent, RefreshCw, Calculator } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const formatCurrency = (amount: number, currency = "UGX") => {
