@@ -160,6 +160,7 @@ const FeeManagement = () => {
     setSimResult(null);
   };
 
+  if (!isSuperAdmin) {
     return (
       <DashboardLayout>
         <div className="text-center py-12">
