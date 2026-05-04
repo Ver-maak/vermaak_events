@@ -101,7 +101,7 @@ const EventEditor = () => {
     onSuccess: (_d, status) => {
       toast({ title: `Event ${status}` });
       qc.invalidateQueries({ queryKey: ["event-edit", id] });
-      setForm((f) => ({ ...f, status: status as any }));
+      setForm((f) => ({ ...f, status: status as typeof f.status }));
     },
   });
 
