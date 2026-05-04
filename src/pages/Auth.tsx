@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Wallet, ArrowRight, Shield } from "lucide-react";
+import { Ticket, ArrowRight } from "lucide-react";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,112 +19,76 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         navigate("/dashboard");
       } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
-          },
+        const { data, error } = await supabase.auth.signUp({
+          email, password,
+          options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        toast({
-          title: "Account created",
-          description: "Check your email to verify your account.",
-        });
+        // Default role: attendee (best-effort, ignore failures)
+        if (data.user) {
+          await supabase.from("user_roles").insert({ user_id: data.user.id, role: "attendee" as any });
+        }
+        toast({ title: "Welcome to EnventSuite!", description: "Your account is ready." });
+        if (data.session) navigate("/dashboard");
+        else setIsLogin(true);
       }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    } catch (err: any) {
+      toast({ title: "Authentication error", description: err.message, variant: "destructive" });
+    } finally { setLoading(false); }
   };
 
   return (
     <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="h-10 w-10 rounded-lg gradient-primary flex items-center justify-center">
-              <Wallet className="h-5 w-5 text-primary-foreground" />
+          <Link to="/" className="inline-flex items-center gap-2 mb-4">
+            <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+              <Ticket className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-bold text-primary-foreground">PayFlow</span>
-          </div>
-          <p className="text-muted-foreground">Multi-tenant payment platform</p>
+            <span className="text-2xl font-bold text-white">EnventSuite</span>
+          </Link>
+          <p className="text-white/60 text-sm">Events made simple</p>
         </div>
 
         <Card className="shadow-elevated">
           <CardHeader>
-            <CardTitle>{isLogin ? "Welcome back" : "Create account"}</CardTitle>
-            <CardDescription>
-              {isLogin ? "Sign in to your account" : "Get started with PayFlow"}
-            </CardDescription>
+            <CardTitle>{isLogin ? "Welcome back" : "Create your account"}</CardTitle>
+            <CardDescription>{isLogin ? "Sign in to manage your events and tickets" : "Start hosting and discovering events"}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="John Doe"
-                    required={!isLogin}
-                  />
+                  <Label htmlFor="name">Full name</Label>
+                  <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Doe" required />
                 </div>
               )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                />
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                />
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
-                <ArrowRight className="h-4 w-4" />
+                {loading ? "Loading…" : isLogin ? "Sign in" : "Create account"}<ArrowRight className="h-4 w-4" />
               </Button>
             </form>
             <div className="mt-4 text-center">
-              <button
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
+              <button onClick={() => setIsLogin(!isLogin)} className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
               </button>
             </div>
-            <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground justify-center">
-              <Shield className="h-3 w-3" />
-              <span>Secured with enterprise-grade encryption</span>
-            </div>
+            <p className="mt-6 text-xs text-muted-foreground text-center">
+              By continuing you agree to our <Link to="/legal/terms" className="underline">Terms</Link> and <Link to="/legal/privacy" className="underline">Privacy Policy</Link>.
+            </p>
           </CardContent>
         </Card>
       </div>

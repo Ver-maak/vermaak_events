@@ -7,6 +7,15 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Browse from "./pages/Browse";
+import EventDetail from "./pages/EventDetail";
+import MyTickets from "./pages/MyTickets";
+import OrderDetail from "./pages/OrderDetail";
+import OrganizerEvents from "./pages/organizer/Events";
+import EventEditor from "./pages/organizer/EventEditor";
+import CheckIn from "./pages/organizer/CheckIn";
+import Analytics from "./pages/organizer/Analytics";
+import Legal from "./pages/Legal";
 import Wallets from "./pages/Wallets";
 import Transactions from "./pages/Transactions";
 import Organizations from "./pages/Organizations";
@@ -34,7 +43,19 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/events" element={<Browse />} />
+            <Route path="/events/:slug" element={<EventDetail />} />
+            <Route path="/legal/:doc" element={<Legal />} />
+
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/my-tickets" element={<ProtectedRoute><MyTickets /></ProtectedRoute>} />
+            <Route path="/dashboard/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+
+            <Route path="/dashboard/events" element={<ProtectedRoute><OrganizerEvents /></ProtectedRoute>} />
+            <Route path="/dashboard/events/:id" element={<ProtectedRoute><EventEditor /></ProtectedRoute>} />
+            <Route path="/dashboard/check-in" element={<ProtectedRoute><CheckIn /></ProtectedRoute>} />
+            <Route path="/dashboard/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+
             <Route path="/dashboard/wallets" element={<ProtectedRoute><Wallets /></ProtectedRoute>} />
             <Route path="/dashboard/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
             <Route path="/dashboard/organizations" element={<ProtectedRoute><Organizations /></ProtectedRoute>} />
@@ -42,6 +63,7 @@ const App = () => (
             <Route path="/dashboard/team" element={<ProtectedRoute><TeamUsers /></ProtectedRoute>} />
             <Route path="/dashboard/fees" element={<ProtectedRoute><FeeManagement /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
