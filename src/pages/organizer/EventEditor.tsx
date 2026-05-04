@@ -93,15 +93,16 @@ const EventEditor = () => {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
+  type EventStatus = "draft" | "published" | "cancelled" | "completed";
   const setStatus = useMutation({
-    mutationFn: async (status: string) => {
+    mutationFn: async (status: EventStatus) => {
       const { error } = await supabase.from("events").update({ status }).eq("id", id!);
       if (error) throw error;
     },
     onSuccess: (_d, status) => {
       toast({ title: `Event ${status}` });
       qc.invalidateQueries({ queryKey: ["event-edit", id] });
-      setForm((f) => ({ ...f, status: status as typeof f.status }));
+      setForm((f) => ({ ...f, status }));
     },
   });
 
