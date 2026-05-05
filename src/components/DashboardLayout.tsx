@@ -33,6 +33,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
     ] : []),
 
     ...(isSuperAdmin ? [
+      { label: "Tenants", href: "/dashboard/tenants", icon: <Activity className="h-4 w-4" />, section: "Admin" },
       { label: "Organizations", href: "/dashboard/organizations", icon: <Building2 className="h-4 w-4" />, section: "Admin" },
       { label: "All users", href: "/dashboard/users", icon: <Users className="h-4 w-4" />, section: "Admin" },
       { label: "Wallets", href: "/dashboard/wallets", icon: <Wallet className="h-4 w-4" />, section: "Admin" },
