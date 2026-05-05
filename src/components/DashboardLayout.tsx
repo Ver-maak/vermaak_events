@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, Building2, Settings, LogOut, Menu, X, Shield,
-  ChevronDown, Calendar, Ticket, QrCode, BarChart3, Wallet, ArrowLeftRight, Percent, Compass
+  ChevronDown, Calendar, Ticket, QrCode, BarChart3, Wallet, ArrowLeftRight, Percent, Compass, Activity
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
