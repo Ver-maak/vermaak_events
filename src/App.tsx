@@ -22,6 +22,7 @@ import Organizations from "./pages/Organizations";
 import TeamUsers from "./pages/TeamUsers";
 import DashboardSettings from "./pages/DashboardSettings";
 import FeeManagement from "./pages/FeeManagement";
+import Tenants from "./pages/admin/Tenants";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
