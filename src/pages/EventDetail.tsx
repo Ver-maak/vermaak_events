@@ -153,9 +153,9 @@ const EventDetail = () => {
                           <Input value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} placeholder="+256 …" />
                         </div>
                         <Button className="w-full gap-2" onClick={() => checkout.mutate()} disabled={checkout.isPending}>
-                          <Ticket className="h-4 w-4" />{checkout.isPending ? "Processing…" : total === 0 ? "Get tickets" : `Pay ${formatMoney(total, event.currency)}`}
+                          <Ticket className="h-4 w-4" />{checkout.isPending ? "Processing…" : total === 0 ? "Get tickets" : `Pay ${formatMoney(total, event.currency)} with Mobile Money`}
                         </Button>
-                        <p className="text-[10px] text-muted-foreground text-center">Demo checkout — no real charge.</p>
+                        <p className="text-[10px] text-muted-foreground text-center">Pay with MTN MoMo or Airtel Money.</p>
                       </>
                     )}
                   </div>
@@ -165,6 +165,15 @@ const EventDetail = () => {
           </div>
         </div>
       </div>
+
+      <MoMoPaymentDialog
+        open={momoOpen}
+        onOpenChange={setMomoOpen}
+        amount={total}
+        currency={event.currency}
+        defaultPhone={buyerPhone}
+        onConfirm={handleMomoConfirm}
+      />
     </div>
   );
 };
