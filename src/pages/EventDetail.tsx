@@ -59,19 +59,27 @@ const EventDetail = () => {
         _event_id: event!.id, _buyer_name: buyerName, _buyer_email: buyerEmail, _buyer_phone: buyerPhone, _items: items as any,
       });
       if (error) throw error;
-
-      // Stub payment for paid orders
-      if (total > 0) {
-        await supabase.rpc("mark_order_paid", { _order_id: orderId, _method: "stub", _reference: "DEMO-" + Date.now() });
-      }
       return orderId as string;
     },
     onSuccess: (orderId) => {
-      toast({ title: "Order confirmed!", description: "Your tickets are ready." });
-      navigate(`/dashboard/orders/${orderId}`);
+      if (total === 0) {
+        toast({ title: "Tickets confirmed!", description: "Free order processed." });
+        navigate(`/dashboard/orders/${orderId}`);
+      } else {
+        setPendingOrderId(orderId);
+        setMomoOpen(true);
+      }
     },
     onError: (e: any) => toast({ title: "Checkout failed", description: e.message, variant: "destructive" }),
   });
+
+  const handleMomoConfirm = async ({ method, reference }: { method: string; phone: string; reference: string }) => {
+    if (!pendingOrderId) throw new Error("No pending order");
+    const { error } = await supabase.rpc("mark_order_paid", { _order_id: pendingOrderId, _method: method, _reference: reference });
+    if (error) throw error;
+    toast({ title: "Payment confirmed!", description: "Your tickets are ready." });
+    setTimeout(() => navigate(`/dashboard/orders/${pendingOrderId}`), 600);
+  };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading…</div></div>;
   if (!event) return <div className="min-h-screen flex items-center justify-center flex-col gap-4"><p>Event not found</p><Link to="/events"><Button>Browse events</Button></Link></div>;
