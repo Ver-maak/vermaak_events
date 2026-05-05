@@ -10,6 +10,7 @@ import { Calendar, MapPin, Ticket, Minus, Plus, ArrowLeft } from "lucide-react";
 import { formatMoney, formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
+import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
 
 const EventDetail = () => {
   const { slug } = useParams();
