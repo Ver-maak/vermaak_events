@@ -10,6 +10,7 @@ import { Calendar, MapPin, Ticket, Minus, Plus, ArrowLeft } from "lucide-react";
 import { formatMoney, formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
+import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
 
 const EventDetail = () => {
   const { slug } = useParams();
@@ -19,6 +20,8 @@ const EventDetail = () => {
   const [buyerName, setBuyerName] = useState(profile?.full_name || "");
   const [buyerEmail, setBuyerEmail] = useState(profile?.email || "");
   const [buyerPhone, setBuyerPhone] = useState("");
+  const [momoOpen, setMomoOpen] = useState(false);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", slug],
@@ -56,19 +59,27 @@ const EventDetail = () => {
         _event_id: event!.id, _buyer_name: buyerName, _buyer_email: buyerEmail, _buyer_phone: buyerPhone, _items: items as any,
       });
       if (error) throw error;
-
-      // Stub payment for paid orders
-      if (total > 0) {
-        await supabase.rpc("mark_order_paid", { _order_id: orderId, _method: "stub", _reference: "DEMO-" + Date.now() });
-      }
       return orderId as string;
     },
     onSuccess: (orderId) => {
-      toast({ title: "Order confirmed!", description: "Your tickets are ready." });
-      navigate(`/dashboard/orders/${orderId}`);
+      if (total === 0) {
+        toast({ title: "Tickets confirmed!", description: "Free order processed." });
+        navigate(`/dashboard/orders/${orderId}`);
+      } else {
+        setPendingOrderId(orderId);
+        setMomoOpen(true);
+      }
     },
     onError: (e: any) => toast({ title: "Checkout failed", description: e.message, variant: "destructive" }),
   });
+
+  const handleMomoConfirm = async ({ method, reference }: { method: string; phone: string; reference: string }) => {
+    if (!pendingOrderId) throw new Error("No pending order");
+    const { error } = await supabase.rpc("mark_order_paid", { _order_id: pendingOrderId, _method: method, _reference: reference });
+    if (error) throw error;
+    toast({ title: "Payment confirmed!", description: "Your tickets are ready." });
+    setTimeout(() => navigate(`/dashboard/orders/${pendingOrderId}`), 600);
+  };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading…</div></div>;
   if (!event) return <div className="min-h-screen flex items-center justify-center flex-col gap-4"><p>Event not found</p><Link to="/events"><Button>Browse events</Button></Link></div>;
@@ -142,9 +153,9 @@ const EventDetail = () => {
                           <Input value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} placeholder="+256 …" />
                         </div>
                         <Button className="w-full gap-2" onClick={() => checkout.mutate()} disabled={checkout.isPending}>
-                          <Ticket className="h-4 w-4" />{checkout.isPending ? "Processing…" : total === 0 ? "Get tickets" : `Pay ${formatMoney(total, event.currency)}`}
+                          <Ticket className="h-4 w-4" />{checkout.isPending ? "Processing…" : total === 0 ? "Get tickets" : `Pay ${formatMoney(total, event.currency)} with Mobile Money`}
                         </Button>
-                        <p className="text-[10px] text-muted-foreground text-center">Demo checkout — no real charge.</p>
+                        <p className="text-[10px] text-muted-foreground text-center">Pay with MTN MoMo or Airtel Money.</p>
                       </>
                     )}
                   </div>
@@ -154,6 +165,15 @@ const EventDetail = () => {
           </div>
         </div>
       </div>
+
+      <MoMoPaymentDialog
+        open={momoOpen}
+        onOpenChange={setMomoOpen}
+        amount={total}
+        currency={event.currency}
+        defaultPhone={buyerPhone}
+        onConfirm={handleMomoConfirm}
+      />
     </div>
   );
 };

@@ -375,6 +375,7 @@ export type Database = {
           kyc_status: string | null
           organization_id: string | null
           phone: string | null
+          status: string
           updated_at: string
         }
         Insert: {
@@ -386,6 +387,7 @@ export type Database = {
           kyc_status?: string | null
           organization_id?: string | null
           phone?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -397,6 +399,7 @@ export type Database = {
           kyc_status?: string | null
           organization_id?: string | null
           phone?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -704,6 +707,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_user_active: { Args: { _user_id: string }; Returns: boolean }
       mark_order_paid: {
         Args: { _method: string; _order_id: string; _reference: string }
         Returns: undefined
