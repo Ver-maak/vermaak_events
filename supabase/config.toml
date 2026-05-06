@@ -1,1 +1,10 @@
 project_id = "ttqwxinddiaoxrqgpgce"
+
+[functions.momo-webhook]
+verify_jwt = false
+
+[functions.tenant-api]
+verify_jwt = false
+
+[functions.dispatch-webhooks]
+verify_jwt = false
