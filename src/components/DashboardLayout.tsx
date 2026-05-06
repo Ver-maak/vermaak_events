@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, Building2, Settings, LogOut, Menu, X, Shield,
-  ChevronDown, Calendar, Ticket, QrCode, BarChart3, Wallet, ArrowLeftRight, Percent, Compass, Activity
+  ChevronDown, Calendar, Ticket, QrCode, BarChart3, Wallet, ArrowLeftRight, Percent, Compass, Activity, Code2
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -30,6 +30,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
       { label: "My events", href: "/dashboard/events", icon: <Calendar className="h-4 w-4" />, section: "Organizer" },
       { label: "Check‑in", href: "/dashboard/check-in", icon: <QrCode className="h-4 w-4" />, section: "Organizer" },
       { label: "Analytics", href: "/dashboard/analytics", icon: <BarChart3 className="h-4 w-4" />, section: "Organizer" },
+      { label: "Developer", href: "/dashboard/developer", icon: <Code2 className="h-4 w-4" />, section: "Organizer" },
     ] : []),
 
     ...(isSuperAdmin ? [

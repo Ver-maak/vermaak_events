@@ -23,6 +23,7 @@ import TeamUsers from "./pages/TeamUsers";
 import DashboardSettings from "./pages/DashboardSettings";
 import FeeManagement from "./pages/FeeManagement";
 import Tenants from "./pages/admin/Tenants";
+import Developer from "./pages/Developer";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/dashboard/events/:id" element={<ProtectedRoute><EventEditor /></ProtectedRoute>} />
             <Route path="/dashboard/check-in" element={<ProtectedRoute><CheckIn /></ProtectedRoute>} />
             <Route path="/dashboard/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+            <Route path="/dashboard/developer" element={<ProtectedRoute><Developer /></ProtectedRoute>} />
 
             <Route path="/dashboard/wallets" element={<ProtectedRoute><Wallets /></ProtectedRoute>} />
             <Route path="/dashboard/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
