@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string
+          id: string
+          key_hash: string
+          last_used_at: string | null
+          name: string
+          organizer_id: string
+          prefix: string
+          revoked_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_hash: string
+          last_used_at?: string | null
+          name: string
+          organizer_id: string
+          prefix: string
+          revoked_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_hash?: string
+          last_used_at?: string | null
+          name?: string
+          organizer_id?: string
+          prefix?: string
+          revoked_at?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -365,6 +398,56 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_intents: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          order_id: string
+          phone: string | null
+          provider: string
+          provider_ref: string
+          raw: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          order_id: string
+          phone?: string | null
+          provider: string
+          provider_ref: string
+          raw?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          order_id?: string
+          phone?: string | null
+          provider?: string
+          provider_ref?: string
+          raw?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -675,6 +758,89 @@ export type Database = {
           },
         ]
       }
+      webhook_deliveries: {
+        Row: {
+          attempts: number
+          created_at: string
+          delivered_at: string | null
+          endpoint_id: string
+          event_type: string
+          id: string
+          last_error: string | null
+          payload: Json
+          response_status: number | null
+          status: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          endpoint_id: string
+          event_type: string
+          id?: string
+          last_error?: string | null
+          payload: Json
+          response_status?: number | null
+          status?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          endpoint_id?: string
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          response_status?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_deliveries_endpoint_id_fkey"
+            columns: ["endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_endpoints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhook_endpoints: {
+        Row: {
+          created_at: string
+          description: string | null
+          events: string[]
+          id: string
+          is_active: boolean
+          organizer_id: string
+          secret: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          organizer_id: string
+          secret: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          events?: string[]
+          id?: string
+          is_active?: boolean
+          organizer_id?: string
+          secret?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -712,6 +878,10 @@ export type Database = {
         Args: { _method: string; _order_id: string; _reference: string }
         Returns: undefined
       }
+      mark_order_paid_by_reference: {
+        Args: { _provider_ref: string; _raw: Json; _status: string }
+        Returns: Json
+      }
       transfer_funds: {
         Args: {
           _amount: number
@@ -721,6 +891,7 @@ export type Database = {
         }
         Returns: string
       }
+      verify_api_key_hash: { Args: { _hash: string }; Returns: string }
     }
     Enums: {
       app_role:

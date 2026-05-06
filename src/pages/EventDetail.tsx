@@ -73,10 +73,18 @@ const EventDetail = () => {
     onError: (e: any) => toast({ title: "Checkout failed", description: e.message, variant: "destructive" }),
   });
 
-  const handleMomoConfirm = async ({ method, reference }: { method: string; phone: string; reference: string }) => {
+  const handleMomoConfirm = async ({ method, phone }: { method: string; phone: string; reference: string }) => {
     if (!pendingOrderId) throw new Error("No pending order");
-    const { error } = await supabase.rpc("mark_order_paid", { _order_id: pendingOrderId, _method: method, _reference: reference });
-    if (error) throw error;
+    // 1. Create payment intent (provider_ref tracked server-side)
+    const { data: init, error: initErr } = await supabase.functions.invoke("momo-initiate", {
+      body: { order_id: pendingOrderId, provider: method, phone },
+    });
+    if (initErr || init?.error) throw new Error(init?.error || initErr?.message || "Failed to initiate");
+    // 2. Trigger simulated provider callback that hits our signed webhook
+    const { data: sim, error: simErr } = await supabase.functions.invoke("momo-simulate", {
+      body: { provider_ref: init.provider_ref, provider: method, outcome: "success" },
+    });
+    if (simErr || !sim?.ok) throw new Error(sim?.data?.error || simErr?.message || "Webhook failed");
     toast({ title: "Payment confirmed!", description: "Your tickets are ready." });
     setTimeout(() => navigate(`/dashboard/orders/${pendingOrderId}`), 600);
   };
