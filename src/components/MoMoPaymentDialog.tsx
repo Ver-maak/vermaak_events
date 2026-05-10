@@ -22,7 +22,17 @@ type Stage = "form" | "prompt" | "waiting" | "success" | "failed";
 
 const AUTO_APPROVE_MS = 5000; // simulated "user enters PIN" delay
 
+// Transparent platform processing fee (shown to buyer before they pay)
+// 3% of subtotal, min 500, max 5000 (in the order currency).
+const calcProcessingFee = (subtotal: number) => {
+  if (subtotal <= 0) return 0;
+  const raw = subtotal * 0.03;
+  return Math.round(Math.min(5000, Math.max(500, raw)));
+};
+
 const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone, onConfirm }: Props) => {
+  const processingFee = calcProcessingFee(amount);
+  const grandTotal = amount + processingFee;
   const [provider, setProvider] = useState<MoMoProvider>("mtn_momo");
   const [phone, setPhone] = useState(defaultPhone || "");
   const [stage, setStage] = useState<Stage>("form");
@@ -93,11 +103,27 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" />Mobile Money Payment</DialogTitle>
-          <DialogDescription>Pay {formatMoney(amount, currency)} securely from your phone.</DialogDescription>
+          <DialogDescription>Review your total below, then approve the prompt on your phone.</DialogDescription>
         </DialogHeader>
 
         {stage === "form" && (
           <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tickets subtotal</span>
+                <span className="font-medium">{formatMoney(amount, currency)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Processing fee</span>
+                <span className="font-medium">{formatMoney(processingFee, currency)}</span>
+              </div>
+              <div className="h-px bg-border my-1" />
+              <div className="flex justify-between">
+                <span className="font-semibold">Total to pay</span>
+                <span className="font-bold text-primary">{formatMoney(grandTotal, currency)}</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground pt-1">This is the exact amount that will be deducted from your mobile money wallet.</p>
+            </div>
             <div className="space-y-2">
               <Label>Choose provider</Label>
               <RadioGroup value={provider} onValueChange={(v) => setProvider(v as MoMoProvider)} className="grid grid-cols-2 gap-2">
@@ -117,7 +143,7 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
               <p className="text-[11px] text-muted-foreground">You'll receive a prompt on this number to enter your PIN.</p>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button className="w-full" onClick={runFlow}>Send payment request</Button>
+            <Button className="w-full" onClick={runFlow}>Pay {formatMoney(grandTotal, currency)}</Button>
           </div>
         )}
 
@@ -136,7 +162,7 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
                 <Smartphone className="h-4 w-4 text-primary animate-pulse" />Check your phone
               </p>
               <p className="text-xs text-muted-foreground">
-                A {providerLabel} prompt for <span className="font-medium text-foreground">{formatMoney(amount, currency)}</span> has been sent to <span className="font-medium text-foreground">{phone}</span>. Enter your PIN to authorize.
+                A {providerLabel} prompt for <span className="font-medium text-foreground">{formatMoney(grandTotal, currency)}</span> (incl. {formatMoney(processingFee, currency)} fee) has been sent to <span className="font-medium text-foreground">{phone}</span>. Enter your PIN to authorize.
               </p>
               <p className="text-xs text-primary">Auto-confirming in {countdown}s…</p>
             </div>
