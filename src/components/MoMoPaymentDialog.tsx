@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,27 +20,56 @@ interface Props {
 
 type Stage = "form" | "prompt" | "waiting" | "success" | "failed";
 
+const AUTO_APPROVE_MS = 5000; // simulated "user enters PIN" delay
+
 const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone, onConfirm }: Props) => {
   const [provider, setProvider] = useState<MoMoProvider>("mtn_momo");
   const [phone, setPhone] = useState(defaultPhone || "");
   const [stage, setStage] = useState<Stage>("form");
+  const [countdown, setCountdown] = useState(AUTO_APPROVE_MS / 1000);
   const [error, setError] = useState("");
+  const cancelledRef = useRef(false);
+  const timerRef = useRef<number | null>(null);
 
-  useEffect(() => { if (open) { setStage("form"); setError(""); } }, [open]);
+  useEffect(() => {
+    if (open) {
+      setStage("form");
+      setError("");
+      cancelledRef.current = false;
+    }
+    return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
+  }, [open]);
 
   const providerLabel = provider === "mtn_momo" ? "MTN Mobile Money" : "Airtel Money";
   const validPhone = /^\+?\d{9,15}$/.test(phone.replace(/\s/g, ""));
 
-  const startPush = async () => {
+  const runFlow = async () => {
     if (!validPhone) { setError("Enter a valid phone number"); return; }
     setError("");
-    setStage("prompt");
-    // Simulate STK push delay
-    await new Promise((r) => setTimeout(r, 1500));
-    setStage("waiting");
-  };
+    cancelledRef.current = false;
 
-  const approve = async () => {
+    // Stage 1: dispatching prompt
+    setStage("prompt");
+    await sleep(1200);
+    if (cancelledRef.current) return;
+
+    // Stage 2: waiting for PIN, with countdown
+    setStage("waiting");
+    setCountdown(AUTO_APPROVE_MS / 1000);
+    const start = Date.now();
+    await new Promise<void>((resolve) => {
+      timerRef.current = window.setInterval(() => {
+        const remaining = Math.max(0, AUTO_APPROVE_MS - (Date.now() - start));
+        setCountdown(Math.ceil(remaining / 1000));
+        if (remaining <= 0 || cancelledRef.current) {
+          if (timerRef.current) window.clearInterval(timerRef.current);
+          resolve();
+        }
+      }, 200) as unknown as number;
+    });
+    if (cancelledRef.current) return;
+
+    // Stage 3: confirm via backend (creates intent + triggers signed webhook)
     try {
       const ref = (provider === "mtn_momo" ? "MTN-" : "AIR-") + Date.now().toString(36).toUpperCase();
       await onConfirm({ method: provider, phone, reference: ref });
@@ -53,12 +82,14 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
   };
 
   const cancel = () => {
-    setStage("failed");
+    cancelledRef.current = true;
+    if (timerRef.current) window.clearInterval(timerRef.current);
     setError("Payment cancelled on phone");
+    setStage("failed");
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (stage !== "prompt") onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (stage !== "prompt" && stage !== "waiting") onOpenChange(o); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" />Mobile Money Payment</DialogTitle>
@@ -83,10 +114,10 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
             <div className="space-y-2">
               <Label>Mobile money number</Label>
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+256 7XX XXX XXX" />
-              <p className="text-[11px] text-muted-foreground">You'll receive a prompt on this number to confirm the payment.</p>
+              <p className="text-[11px] text-muted-foreground">You'll receive a prompt on this number to enter your PIN.</p>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button className="w-full" onClick={startPush}>Send payment request</Button>
+            <Button className="w-full" onClick={runFlow}>Send payment request</Button>
           </div>
         )}
 
@@ -100,15 +131,17 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
 
         {stage === "waiting" && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-2">
-              <p className="text-sm font-medium">📱 Check your phone</p>
-              <p className="text-xs text-muted-foreground">A payment prompt for <span className="font-medium text-foreground">{formatMoney(amount, currency)}</span> via {providerLabel} has been sent to <span className="font-medium text-foreground">{phone}</span>. Enter your PIN to authorize.</p>
+            <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 space-y-2">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <Smartphone className="h-4 w-4 text-primary animate-pulse" />Check your phone
+              </p>
+              <p className="text-xs text-muted-foreground">
+                A {providerLabel} prompt for <span className="font-medium text-foreground">{formatMoney(amount, currency)}</span> has been sent to <span className="font-medium text-foreground">{phone}</span>. Enter your PIN to authorize.
+              </p>
+              <p className="text-xs text-primary">Auto-confirming in {countdown}s…</p>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={cancel}>Cancel on phone</Button>
-              <Button onClick={approve}>I authorized payment</Button>
-            </div>
-            <p className="text-[10px] text-muted-foreground text-center">Demo mode — simulating real MoMo confirmation flow.</p>
+            <Button variant="outline" className="w-full" onClick={cancel}>Cancel payment</Button>
+            <p className="text-[10px] text-muted-foreground text-center">Demo mode — auto-approves after a few seconds to simulate PIN entry.</p>
           </div>
         )}
 
@@ -135,4 +168,7 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
   );
 };
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export default MoMoPaymentDialog;
+
