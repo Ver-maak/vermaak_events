@@ -103,7 +103,7 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" />Mobile Money Payment</DialogTitle>
-          <DialogDescription>Pay {formatMoney(amount, currency)} securely from your phone.</DialogDescription>
+          <DialogDescription>Review your total below, then approve the prompt on your phone.</DialogDescription>
         </DialogHeader>
 
         {stage === "form" && (
