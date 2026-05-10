@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
     const { data: order, error: oerr } = await sb.from("orders").select("*").eq("id", order_id).single();
     if (oerr || !order) return json({ error: "order not found" }, 404);
-    if (order.buyer_id !== claims.claims.sub) return json({ error: "forbidden" }, 403);
+    if (order.buyer_id !== userId) return json({ error: "forbidden" }, 403);
     if (order.status !== "pending") return json({ error: `order is ${order.status}` }, 400);
 
     const providerRef = `${provider === "mtn_momo" ? "MTN" : "AIR"}-${crypto.randomUUID()}`;
