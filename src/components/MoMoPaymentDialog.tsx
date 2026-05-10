@@ -162,7 +162,7 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
                 <Smartphone className="h-4 w-4 text-primary animate-pulse" />Check your phone
               </p>
               <p className="text-xs text-muted-foreground">
-                A {providerLabel} prompt for <span className="font-medium text-foreground">{formatMoney(amount, currency)}</span> has been sent to <span className="font-medium text-foreground">{phone}</span>. Enter your PIN to authorize.
+                A {providerLabel} prompt for <span className="font-medium text-foreground">{formatMoney(grandTotal, currency)}</span> (incl. {formatMoney(processingFee, currency)} fee) has been sent to <span className="font-medium text-foreground">{phone}</span>. Enter your PIN to authorize.
               </p>
               <p className="text-xs text-primary">Auto-confirming in {countdown}s…</p>
             </div>
