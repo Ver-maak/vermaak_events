@@ -46,6 +46,26 @@ const EventDetail = () => {
   const total = (tiers || []).reduce((s, t) => s + (quantities[t.id] || 0) * Number(t.price), 0);
   const totalQty = Object.values(quantities).reduce((s, n) => s + n, 0);
 
+  // Fetch processing-fee quote from the platform fee engine (tenant-aware).
+  const { data: feeQuoteRaw } = useQuery({
+    queryKey: ["fee-quote", event?.id, total],
+    enabled: !!event?.id && total > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("quote_event_fee", { _event_id: event!.id, _amount: total });
+      if (error) throw error;
+      return data as { subtotal: number; fee: number; grand_total: number; currency: string; tier_label: string };
+    },
+  });
+  const feeQuote = feeQuoteRaw
+    ? {
+        subtotal: Number(feeQuoteRaw.subtotal),
+        fee: Number(feeQuoteRaw.fee),
+        grandTotal: Number(feeQuoteRaw.grand_total),
+        currency: feeQuoteRaw.currency,
+        tierLabel: feeQuoteRaw.tier_label,
+      }
+    : null;
+
   const checkout = useMutation({
     mutationFn: async () => {
       if (!session) { navigate("/auth"); throw new Error("Sign in first"); }
