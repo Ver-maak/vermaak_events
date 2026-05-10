@@ -108,6 +108,22 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
 
         {stage === "form" && (
           <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tickets subtotal</span>
+                <span className="font-medium">{formatMoney(amount, currency)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Processing fee</span>
+                <span className="font-medium">{formatMoney(processingFee, currency)}</span>
+              </div>
+              <div className="h-px bg-border my-1" />
+              <div className="flex justify-between">
+                <span className="font-semibold">Total to pay</span>
+                <span className="font-bold text-primary">{formatMoney(grandTotal, currency)}</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground pt-1">This is the exact amount that will be deducted from your mobile money wallet.</p>
+            </div>
             <div className="space-y-2">
               <Label>Choose provider</Label>
               <RadioGroup value={provider} onValueChange={(v) => setProvider(v as MoMoProvider)} className="grid grid-cols-2 gap-2">
