@@ -245,6 +245,7 @@ const EventDetail = () => {
         amount={total}
         currency={event.currency}
         defaultPhone={buyerPhone}
+        feeQuote={feeQuote}
         onConfirm={handleMomoConfirm}
       />
     </div>
