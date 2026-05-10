@@ -9,12 +9,21 @@ import { formatMoney } from "@/lib/format";
 
 export type MoMoProvider = "mtn_momo" | "airtel_money";
 
+export interface FeeQuote {
+  subtotal: number;
+  fee: number;
+  grandTotal: number;
+  currency: string;
+  tierLabel?: string | null;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   amount: number;
   currency: string;
   defaultPhone?: string;
+  feeQuote?: FeeQuote | null;
   onConfirm: (result: { method: MoMoProvider; phone: string; reference: string }) => Promise<void>;
 }
 
@@ -22,17 +31,16 @@ type Stage = "form" | "prompt" | "waiting" | "success" | "failed";
 
 const AUTO_APPROVE_MS = 5000; // simulated "user enters PIN" delay
 
-// Transparent platform processing fee (shown to buyer before they pay)
-// 3% of subtotal, min 500, max 5000 (in the order currency).
-const calcProcessingFee = (subtotal: number) => {
+// Fallback fee (used only if no tenant fee quote is supplied).
+const fallbackFee = (subtotal: number) => {
   if (subtotal <= 0) return 0;
-  const raw = subtotal * 0.03;
-  return Math.round(Math.min(5000, Math.max(500, raw)));
+  return Math.round(Math.min(5000, Math.max(500, subtotal * 0.03)));
 };
 
-const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone, onConfirm }: Props) => {
-  const processingFee = calcProcessingFee(amount);
-  const grandTotal = amount + processingFee;
+const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone, feeQuote, onConfirm }: Props) => {
+  const processingFee = feeQuote ? feeQuote.fee : fallbackFee(amount);
+  const grandTotal = feeQuote ? feeQuote.grandTotal : amount + processingFee;
+  const tierLabel = feeQuote?.tierLabel;
   const [provider, setProvider] = useState<MoMoProvider>("mtn_momo");
   const [phone, setPhone] = useState(defaultPhone || "");
   const [stage, setStage] = useState<Stage>("form");
