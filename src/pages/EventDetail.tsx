@@ -166,7 +166,43 @@ const EventDetail = () => {
 
                 {totalQty > 0 && (
                   <div className="border-t border-border pt-3 space-y-3">
-                    <div className="flex justify-between font-semibold"><span>Total</span><span>{formatMoney(total, event.currency)}</span></div>
+                    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Tickets subtotal</span>
+                        <span className="font-medium">{formatMoney(total, event.currency)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Processing fee
+                          {feeQuote?.tierLabel && total > 0 && (
+                            <span className="block text-[10px] opacity-70">{feeQuote.tierLabel}</span>
+                          )}
+                        </span>
+                        <span className="font-medium">
+                          {total === 0
+                            ? formatMoney(0, event.currency)
+                            : feeQuote
+                              ? formatMoney(feeQuote.fee, event.currency)
+                              : "—"}
+                        </span>
+                      </div>
+                      <div className="h-px bg-border my-1" />
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Total to pay</span>
+                        <span className="font-bold text-primary">
+                          {total === 0
+                            ? formatMoney(0, event.currency)
+                            : feeQuote
+                              ? formatMoney(feeQuote.grandTotal, event.currency)
+                              : formatMoney(total, event.currency)}
+                        </span>
+                      </div>
+                      {total > 0 && (
+                        <p className="text-[10px] text-muted-foreground pt-1">
+                          Fee determined by EnventSuite's tenant fee schedule. This is the exact amount charged to your mobile money wallet.
+                        </p>
+                      )}
+                    </div>
 
                     {!session ? (
                       <Button className="w-full" onClick={() => navigate("/auth")}>Sign in to checkout</Button>
@@ -180,8 +216,17 @@ const EventDetail = () => {
                           <Label className="text-xs">Phone (optional)</Label>
                           <Input value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} placeholder="+256 …" />
                         </div>
-                        <Button className="w-full gap-2" onClick={() => checkout.mutate()} disabled={checkout.isPending}>
-                          <Ticket className="h-4 w-4" />{checkout.isPending ? "Processing…" : total === 0 ? "Get tickets" : `Pay ${formatMoney(total, event.currency)} with Mobile Money`}
+                        <Button
+                          className="w-full gap-2"
+                          onClick={() => checkout.mutate()}
+                          disabled={checkout.isPending || (total > 0 && !feeQuote)}
+                        >
+                          <Ticket className="h-4 w-4" />
+                          {checkout.isPending
+                            ? "Processing…"
+                            : total === 0
+                              ? "Get tickets"
+                              : `Pay ${formatMoney(feeQuote ? feeQuote.grandTotal : total, event.currency)} with Mobile Money`}
                         </Button>
                         <p className="text-[10px] text-muted-foreground text-center">Pay with MTN MoMo or Airtel Money.</p>
                       </>
