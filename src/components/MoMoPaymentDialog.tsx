@@ -143,7 +143,7 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
               <p className="text-[11px] text-muted-foreground">You'll receive a prompt on this number to enter your PIN.</p>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button className="w-full" onClick={runFlow}>Send payment request</Button>
+            <Button className="w-full" onClick={runFlow}>Pay {formatMoney(grandTotal, currency)}</Button>
           </div>
         )}
 
