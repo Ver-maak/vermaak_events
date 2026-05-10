@@ -12,26 +12,34 @@ Deno.serve(async (req) => {
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: auth } },
     });
-    const { data: claims } = await sb.auth.getClaims(auth.replace("Bearer ", ""));
-    if (!claims?.claims?.sub) return json({ error: "unauthorized" }, 401);
+    const { data: userData, error: uerr } = await sb.auth.getUser(auth.replace("Bearer ", ""));
+    if (uerr || !userData?.user?.id) return json({ error: "unauthorized" }, 401);
+    const userId = userData.user.id;
 
     const { order_id, provider, phone } = await req.json();
     if (!order_id || !["mtn_momo", "airtel_money"].includes(provider)) return json({ error: "bad input" }, 400);
 
     const { data: order, error: oerr } = await sb.from("orders").select("*").eq("id", order_id).single();
     if (oerr || !order) return json({ error: "order not found" }, 404);
-    if (order.buyer_id !== claims.claims.sub) return json({ error: "forbidden" }, 403);
+    if (order.buyer_id !== userId) return json({ error: "forbidden" }, 403);
     if (order.status !== "pending") return json({ error: `order is ${order.status}` }, 400);
+
+    // Compute the inclusive amount (subtotal + tenant processing fee) using fee-tier engine
+    const { data: quote, error: qerr } = await sb.rpc("quote_order_fee", { _order_id: order_id });
+    if (qerr) return json({ error: qerr.message }, 400);
+    const chargeAmount = Number((quote as any)?.grand_total ?? order.total_amount);
+    const feeAmount = Number((quote as any)?.fee ?? 0);
 
     const providerRef = `${provider === "mtn_momo" ? "MTN" : "AIR"}-${crypto.randomUUID()}`;
 
     const { error: ierr } = await sb.from("payment_intents").insert({
-      order_id, provider, phone, amount: order.total_amount, currency: order.currency,
+      order_id, provider, phone, amount: chargeAmount, currency: order.currency,
       provider_ref: providerRef, status: "pending",
+      raw: { fee: feeAmount, subtotal: Number(order.total_amount), tier_label: (quote as any)?.tier_label },
     });
     if (ierr) return json({ error: ierr.message }, 400);
 
-    return json({ provider_ref: providerRef });
+    return json({ provider_ref: providerRef, charge_amount: chargeAmount, fee: feeAmount });
   } catch (e) {
     return json({ error: (e as Error).message }, 500);
   }
