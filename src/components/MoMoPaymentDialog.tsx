@@ -122,7 +122,10 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
                 <span className="font-medium">{formatMoney(amount, currency)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Processing fee</span>
+                <span className="text-muted-foreground">
+                  Processing fee
+                  {tierLabel && <span className="block text-[10px] opacity-70">{tierLabel}</span>}
+                </span>
                 <span className="font-medium">{formatMoney(processingFee, currency)}</span>
               </div>
               <div className="h-px bg-border my-1" />
