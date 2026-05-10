@@ -12,8 +12,9 @@ Deno.serve(async (req) => {
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: auth } },
     });
-    const { data: claims } = await sb.auth.getClaims(auth.replace("Bearer ", ""));
-    if (!claims?.claims?.sub) return json({ error: "unauthorized" }, 401);
+    const { data: userData, error: uerr } = await sb.auth.getUser(auth.replace("Bearer ", ""));
+    if (uerr || !userData?.user?.id) return json({ error: "unauthorized" }, 401);
+    const userId = userData.user.id;
 
     const { order_id, provider, phone } = await req.json();
     if (!order_id || !["mtn_momo", "airtel_money"].includes(provider)) return json({ error: "bad input" }, 400);
