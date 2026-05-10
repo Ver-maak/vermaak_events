@@ -22,7 +22,17 @@ type Stage = "form" | "prompt" | "waiting" | "success" | "failed";
 
 const AUTO_APPROVE_MS = 5000; // simulated "user enters PIN" delay
 
+// Transparent platform processing fee (shown to buyer before they pay)
+// 3% of subtotal, min 500, max 5000 (in the order currency).
+const calcProcessingFee = (subtotal: number) => {
+  if (subtotal <= 0) return 0;
+  const raw = subtotal * 0.03;
+  return Math.round(Math.min(5000, Math.max(500, raw)));
+};
+
 const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone, onConfirm }: Props) => {
+  const processingFee = calcProcessingFee(amount);
+  const grandTotal = amount + processingFee;
   const [provider, setProvider] = useState<MoMoProvider>("mtn_momo");
   const [phone, setPhone] = useState(defaultPhone || "");
   const [stage, setStage] = useState<Stage>("form");
