@@ -882,6 +882,7 @@ export type Database = {
         Args: { _provider_ref: string; _raw: Json; _status: string }
         Returns: Json
       }
+      quote_order_fee: { Args: { _order_id: string }; Returns: Json }
       transfer_funds: {
         Args: {
           _amount: number
