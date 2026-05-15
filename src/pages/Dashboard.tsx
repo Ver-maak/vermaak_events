@@ -214,6 +214,33 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Organizer: incoming buyer orders */}
+        {isOrganizer && recentEventOrders && recentEventOrders.length > 0 && (
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-lg flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" />Latest sales</CardTitle>
+              <Link to="/dashboard/analytics"><Button size="sm" variant="ghost">Analytics</Button></Link>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {recentEventOrders.map((o: any) => {
+                const ev = myEvents?.find((e) => e.id === o.event_id);
+                return (
+                  <div key={o.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{o.buyer_name || o.buyer_email}</p>
+                      <p className="text-xs text-muted-foreground truncate">{ev?.title || "Event"} · {formatDateTime(o.created_at)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{formatMoney(Number(o.total_amount), o.currency)}</p>
+                      <p className={`text-xs capitalize ${o.status === "paid" ? "text-success" : "text-warning"}`}>{o.status}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );
