@@ -2,9 +2,10 @@ import { useAuth } from "@/lib/auth";
 import DashboardLayout from "@/components/DashboardLayout";
 import StatCard from "@/components/StatCard";
 import EmptyState from "@/components/EmptyState";
-import { Calendar, Ticket, Users, DollarSign, Sparkles, ArrowRight, CheckCircle2, Circle } from "lucide-react";
+import { Calendar, Ticket, Users, DollarSign, Sparkles, ArrowRight, CheckCircle2, Circle, Building2, QrCode, BarChart3, Code2, Plus, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
@@ -52,6 +53,25 @@ const Dashboard = () => {
     },
   });
 
+  const { data: organization } = useQuery({
+    queryKey: ["my-organization", profile?.organization_id],
+    enabled: !!profile?.organization_id,
+    queryFn: async () => {
+      const { data } = await supabase.from("organizations").select("*").eq("id", profile!.organization_id!).maybeSingle();
+      return data;
+    },
+  });
+
+  const { data: recentEventOrders } = useQuery({
+    queryKey: ["organizer-recent-orders", user?.id],
+    enabled: isOrganizer && !!myEvents && myEvents.length > 0,
+    queryFn: async () => {
+      const ids = myEvents!.map((e) => e.id);
+      const { data } = await supabase.from("orders").select("id,buyer_email,buyer_name,total_amount,currency,status,created_at,event_id").in("event_id", ids).order("created_at", { ascending: false }).limit(6);
+      return data || [];
+    },
+  });
+
   const becomeOrganizer = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
@@ -80,6 +100,35 @@ const Dashboard = () => {
           <h1 className="text-2xl font-bold">Welcome back{profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}</h1>
           <p className="text-muted-foreground">{isOrganizer ? "Here's what's happening with your events." : "Discover events and manage your tickets."}</p>
         </div>
+
+        {/* Organization banner */}
+        {isOrganizer && organization && (
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-accent/5 to-transparent">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center"><Building2 className="h-5 w-5 text-primary" /></div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Organization</p>
+                  <p className="font-semibold leading-tight">{organization.name}</p>
+                  <p className="text-xs text-muted-foreground">/{organization.slug}</p>
+                </div>
+              </div>
+              <Badge variant="outline" className={organization.status === "active" ? "bg-success/10 text-success border-success/20" : "bg-destructive/10 text-destructive border-destructive/20"}>
+                {organization.status}
+              </Badge>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Quick actions for organizers */}
+        {isOrganizer && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Link to="/dashboard/events/new"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><Plus className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Create event</p><p className="text-xs text-muted-foreground">Launch a new event</p></CardContent></Card></Link>
+            <Link to="/dashboard/check-in"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><QrCode className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Check‑in</p><p className="text-xs text-muted-foreground">Scan tickets at the gate</p></CardContent></Card></Link>
+            <Link to="/dashboard/analytics"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><BarChart3 className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Analytics</p><p className="text-xs text-muted-foreground">Sales & attendance</p></CardContent></Card></Link>
+            <Link to="/dashboard/developer"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><Code2 className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Developer</p><p className="text-xs text-muted-foreground">API keys & webhooks</p></CardContent></Card></Link>
+          </div>
+        )}
 
         {/* Onboarding checklist */}
         {incomplete.length > 0 && (
@@ -165,6 +214,33 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Organizer: incoming buyer orders */}
+        {isOrganizer && recentEventOrders && recentEventOrders.length > 0 && (
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-lg flex items-center gap-2"><TrendingUp className="h-4 w-4 text-primary" />Latest sales</CardTitle>
+              <Link to="/dashboard/analytics"><Button size="sm" variant="ghost">Analytics</Button></Link>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {recentEventOrders.map((o: any) => {
+                const ev = myEvents?.find((e) => e.id === o.event_id);
+                return (
+                  <div key={o.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{o.buyer_name || o.buyer_email}</p>
+                      <p className="text-xs text-muted-foreground truncate">{ev?.title || "Event"} · {formatDateTime(o.created_at)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{formatMoney(Number(o.total_amount), o.currency)}</p>
+                      <p className={`text-xs capitalize ${o.status === "paid" ? "text-success" : "text-warning"}`}>{o.status}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );
