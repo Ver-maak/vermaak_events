@@ -53,6 +53,25 @@ const Dashboard = () => {
     },
   });
 
+  const { data: organization } = useQuery({
+    queryKey: ["my-organization", profile?.organization_id],
+    enabled: !!profile?.organization_id,
+    queryFn: async () => {
+      const { data } = await supabase.from("organizations").select("*").eq("id", profile!.organization_id!).maybeSingle();
+      return data;
+    },
+  });
+
+  const { data: recentEventOrders } = useQuery({
+    queryKey: ["organizer-recent-orders", user?.id],
+    enabled: isOrganizer && !!myEvents && myEvents.length > 0,
+    queryFn: async () => {
+      const ids = myEvents!.map((e) => e.id);
+      const { data } = await supabase.from("orders").select("id,buyer_email,buyer_name,total_amount,currency,status,created_at,event_id").in("event_id", ids).order("created_at", { ascending: false }).limit(6);
+      return data || [];
+    },
+  });
+
   const becomeOrganizer = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
