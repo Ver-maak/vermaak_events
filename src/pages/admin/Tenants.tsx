@@ -194,23 +194,63 @@ const Tenants = () => {
             <DialogTrigger asChild>
               <Button className="gap-2"><UserPlus className="h-4 w-4" />Promote organizer</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Add organizer</DialogTitle>
-                <DialogDescription>Grant organizer permissions to an existing user account.</DialogDescription>
+                <DialogDescription>Provision a brand-new organization & login, or promote an existing user.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-2">
-                <Label>User email</Label>
-                <Input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="organizer@example.com" />
-                <p className="text-xs text-muted-foreground">User must already have signed up.</p>
-              </div>
-              <DialogFooter>
-                <Button onClick={() => promoteMutation.mutate(newEmail)} disabled={!newEmail || promoteMutation.isPending}>
-                  {promoteMutation.isPending ? "Adding…" : "Add organizer"}
-                </Button>
-              </DialogFooter>
+              <Tabs defaultValue="new">
+                <TabsList className="w-full">
+                  <TabsTrigger value="new" className="flex-1">Create new</TabsTrigger>
+                  <TabsTrigger value="promote" className="flex-1">Promote existing</TabsTrigger>
+                </TabsList>
+                <TabsContent value="new" className="space-y-3 pt-3">
+                  <div className="space-y-1.5"><Label>Organization name</Label>
+                    <Input value={provision.org_name} onChange={(e) => setProvision({ ...provision, org_name: e.target.value })} placeholder="Acme Events" /></div>
+                  <div className="space-y-1.5"><Label>Admin contact name</Label>
+                    <Input value={provision.admin_name} onChange={(e) => setProvision({ ...provision, admin_name: e.target.value })} placeholder="Jane Doe" /></div>
+                  <div className="space-y-1.5"><Label>Login email</Label>
+                    <Input type="email" value={provision.email} onChange={(e) => setProvision({ ...provision, email: e.target.value })} placeholder="admin@acme.com" />
+                    <p className="text-xs text-muted-foreground">A temporary password will be generated and shown once.</p></div>
+                  <DialogFooter>
+                    <Button onClick={() => provisionMutation.mutate(provision)} disabled={provisionMutation.isPending || !provision.org_name || !provision.email}>
+                      {provisionMutation.isPending ? "Provisioning…" : "Create & provision"}
+                    </Button>
+                  </DialogFooter>
+                </TabsContent>
+                <TabsContent value="promote" className="space-y-3 pt-3">
+                  <div className="space-y-1.5"><Label>User email</Label>
+                    <Input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="organizer@example.com" />
+                    <p className="text-xs text-muted-foreground">User must already have signed up.</p></div>
+                  <DialogFooter>
+                    <Button onClick={() => promoteMutation.mutate(newEmail)} disabled={!newEmail || promoteMutation.isPending}>
+                      {promoteMutation.isPending ? "Adding…" : "Add organizer"}
+                    </Button>
+                  </DialogFooter>
+                </TabsContent>
+              </Tabs>
             </DialogContent>
           </Dialog>
+        </div>
+
+        <Dialog open={!!credentials} onOpenChange={(o) => !o && setCredentials(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Organizer account created</DialogTitle>
+              <DialogDescription>Share these credentials with {credentials?.org}. They won't be shown again.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
+              <div><Label className="text-xs uppercase tracking-wide text-muted-foreground">Email</Label>
+                <code className="block text-sm break-all mt-1">{credentials?.email}</code></div>
+              <div><Label className="text-xs uppercase tracking-wide text-muted-foreground">Temporary password</Label>
+                <code className="block text-sm break-all mt-1">{credentials?.password}</code></div>
+              <Button size="sm" variant="outline" className="w-full" onClick={() => { navigator.clipboard.writeText(`Email: ${credentials?.email}\nPassword: ${credentials?.password}`); toast({ title: "Copied" }); }}>Copy both</Button>
+            </div>
+            <DialogFooter><Button onClick={() => setCredentials(null)}>Done</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <div className="hidden">
         </div>
 
         {/* KPIs */}
