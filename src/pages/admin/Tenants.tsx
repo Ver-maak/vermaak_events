@@ -136,6 +136,26 @@ const Tenants = () => {
     onError: (e: any) => toast({ title: "Couldn't promote user", description: e.message, variant: "destructive" }),
   });
 
+  const provisionMutation = useMutation({
+    mutationFn: async (p: typeof provision) => {
+      const { data, error } = await supabase.functions.invoke("provision-organizer", {
+        body: { organization_name: p.org_name, email: p.email, full_name: p.admin_name },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data as any;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["admin-organizers"] });
+      setCreateOpen(false);
+      const orgName = data.organization?.name || provision.org_name;
+      setProvision({ org_name: "", admin_name: "", email: "" });
+      if (data.credentials) setCredentials({ email: data.credentials.email, password: data.credentials.password, org: orgName });
+      else toast({ title: "Organizer added", description: data.already_existed ? "Existing user linked." : "" });
+    },
+    onError: (e: any) => toast({ title: "Couldn't provision", description: e.message, variant: "destructive" }),
+  });
+
   // Activity feed: combine recent orders + check-ins
   const activity = useMemo(() => {
     const items: { id: string; ts: string; kind: string; text: string }[] = [];
