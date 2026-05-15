@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Building2, Plus, Users, Wallet, Settings } from "lucide-react";
+import { Building2, Plus, Settings, Copy, KeyRound, CheckCircle2 } from "lucide-react";
 
 const featureLabels: Record<string, string> = {
   wallets: "Wallets",
@@ -24,8 +24,9 @@ const featureLabels: Record<string, string> = {
 const Organizations = () => {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
-  const [newOrg, setNewOrg] = useState({ name: "", slug: "" });
+  const [newOrg, setNewOrg] = useState({ name: "", slug: "", email: "", admin_name: "" });
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
+  const [credentials, setCredentials] = useState<{ email: string; password: string; org: string } | null>(null);
 
   const { data: orgs, isLoading } = useQuery({
     queryKey: ["organizations"],
@@ -37,43 +38,49 @@ const Organizations = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (org: { name: string; slug: string }) => {
-      const { error } = await supabase.from("organizations").insert(org);
+    mutationFn: async (org: typeof newOrg) => {
+      const { data, error } = await supabase.functions.invoke("provision-organizer", {
+        body: {
+          organization_name: org.name,
+          slug: org.slug,
+          email: org.email,
+          full_name: org.admin_name,
+        },
+      });
       if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data as any;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
       setCreateOpen(false);
-      setNewOrg({ name: "", slug: "" });
-      toast({ title: "Organization created" });
+      const orgName = data.organization?.name || newOrg.name;
+      setNewOrg({ name: "", slug: "", email: "", admin_name: "" });
+      if (data.credentials) {
+        setCredentials({ email: data.credentials.email, password: data.credentials.password, org: orgName });
+      } else {
+        toast({ title: "Organization created", description: data.already_existed ? "Existing user was added as organizer." : "" });
+      }
     },
-    onError: (err: Error) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const toggleFeature = async (orgId: string, flags: Record<string, boolean>, feature: string) => {
     const updated = { ...flags, [feature]: !flags[feature] };
     const { error } = await supabase.from("organizations").update({ feature_flags: updated }).eq("id", orgId);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
-    }
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else queryClient.invalidateQueries({ queryKey: ["organizations"] });
   };
 
   const toggleStatus = async (orgId: string, currentStatus: string) => {
     const newStatus = currentStatus === "active" ? "suspended" : "active";
     const { error } = await supabase.from("organizations").update({ status: newStatus as any }).eq("id", orgId);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      queryClient.invalidateQueries({ queryKey: ["organizations"] });
-      toast({ title: `Organization ${newStatus}` });
-    }
+    if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
+    else { queryClient.invalidateQueries({ queryKey: ["organizations"] }); toast({ title: `Organization ${newStatus}` }); }
   };
 
   const selectedOrgData = orgs?.find(o => o.id === selectedOrg);
+  const copy = (t: string) => { navigator.clipboard.writeText(t); toast({ title: "Copied" }); };
 
   return (
     <DashboardLayout>
@@ -88,20 +95,34 @@ const Organizations = () => {
               <Button className="gap-2"><Plus className="h-4 w-4" />New Organization</Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Create Organization</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Create Organization</DialogTitle>
+                <DialogDescription>An organizer login will be auto-generated for the email below.</DialogDescription>
+              </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Name</Label>
-                  <Input value={newOrg.name} onChange={(e) => setNewOrg({ ...newOrg, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") })} placeholder="Acme Corp" />
+                  <Label>Organization name</Label>
+                  <Input value={newOrg.name} onChange={(e) => setNewOrg({ ...newOrg, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") })} placeholder="Acme Events" />
                 </div>
                 <div className="space-y-2">
                   <Label>Slug</Label>
-                  <Input value={newOrg.slug} onChange={(e) => setNewOrg({ ...newOrg, slug: e.target.value })} placeholder="acme-corp" />
+                  <Input value={newOrg.slug} onChange={(e) => setNewOrg({ ...newOrg, slug: e.target.value })} placeholder="acme-events" />
                 </div>
-                <Button onClick={() => createMutation.mutate(newOrg)} className="w-full" disabled={createMutation.isPending || !newOrg.name || !newOrg.slug}>
-                  {createMutation.isPending ? "Creating..." : "Create Organization"}
-                </Button>
+                <div className="space-y-2">
+                  <Label>Admin contact name</Label>
+                  <Input value={newOrg.admin_name} onChange={(e) => setNewOrg({ ...newOrg, admin_name: e.target.value })} placeholder="Jane Doe" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Login email</Label>
+                  <Input type="email" value={newOrg.email} onChange={(e) => setNewOrg({ ...newOrg, email: e.target.value })} placeholder="admin@acme.com" />
+                  <p className="text-xs text-muted-foreground">A temporary password will be generated and shown once.</p>
+                </div>
               </div>
+              <DialogFooter>
+                <Button onClick={() => createMutation.mutate(newOrg)} disabled={createMutation.isPending || !newOrg.name || !newOrg.slug || !newOrg.email}>
+                  {createMutation.isPending ? "Creating..." : "Create & provision"}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
@@ -109,31 +130,21 @@ const Organizations = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />)}
-              </div>
+              <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />)}</div>
             ) : orgs && orgs.length > 0 ? (
               <div className="space-y-3">
                 {orgs.map((org) => (
-                  <Card
-                    key={org.id}
-                    className={`shadow-card cursor-pointer transition-all hover:shadow-elevated ${selectedOrg === org.id ? "ring-2 ring-primary" : ""}`}
-                    onClick={() => setSelectedOrg(org.id)}
-                  >
+                  <Card key={org.id} className={`shadow-card cursor-pointer transition-all hover:shadow-elevated ${selectedOrg === org.id ? "ring-2 ring-primary" : ""}`} onClick={() => setSelectedOrg(org.id)}>
                     <CardContent className="p-4 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Building2 className="h-5 w-5 text-primary" />
-                        </div>
+                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><Building2 className="h-5 w-5 text-primary" /></div>
                         <div>
                           <p className="font-medium">{org.name}</p>
                           <p className="text-sm text-muted-foreground">/{org.slug}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge variant="outline" className={org.status === "active" ? "bg-success/10 text-success border-success/20" : "bg-destructive/10 text-destructive border-destructive/20"}>
-                          {org.status}
-                        </Badge>
+                        <Badge variant="outline" className={org.status === "active" ? "bg-success/10 text-success border-success/20" : "bg-destructive/10 text-destructive border-destructive/20"}>{org.status}</Badge>
                         <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); toggleStatus(org.id, org.status); }}>
                           {org.status === "active" ? "Suspend" : "Activate"}
                         </Button>
@@ -143,25 +154,19 @@ const Organizations = () => {
                 ))}
               </div>
             ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="font-medium">No organizations yet</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Create your first organization to get started.</p>
-                </CardContent>
-              </Card>
+              <Card><CardContent className="py-12 text-center">
+                <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="font-medium">No organizations yet</h3>
+                <p className="text-sm text-muted-foreground mt-1">Create your first organization to get started.</p>
+              </CardContent></Card>
             )}
           </div>
 
-          {/* Feature toggles panel */}
           <div>
             {selectedOrgData ? (
               <Card className="shadow-card">
                 <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    Feature Toggles
-                  </CardTitle>
+                  <CardTitle className="text-lg flex items-center gap-2"><Settings className="h-4 w-4" />Feature Toggles</CardTitle>
                   <p className="text-sm text-muted-foreground">{selectedOrgData.name}</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -170,25 +175,48 @@ const Organizations = () => {
                     return (
                       <div key={key} className="flex items-center justify-between">
                         <Label className="text-sm">{label}</Label>
-                        <Switch
-                          checked={flags[key] || false}
-                          onCheckedChange={() => toggleFeature(selectedOrgData.id, flags, key)}
-                        />
+                        <Switch checked={flags[key] || false} onCheckedChange={() => toggleFeature(selectedOrgData.id, flags, key)} />
                       </div>
                     );
                   })}
                 </CardContent>
               </Card>
             ) : (
-              <Card className="shadow-card">
-                <CardContent className="py-8 text-center">
-                  <p className="text-sm text-muted-foreground">Select an organization to manage its features</p>
-                </CardContent>
-              </Card>
+              <Card className="shadow-card"><CardContent className="py-8 text-center">
+                <p className="text-sm text-muted-foreground">Select an organization to manage its features</p>
+              </CardContent></Card>
             )}
           </div>
         </div>
       </div>
+
+      {/* Generated credentials dialog */}
+      <Dialog open={!!credentials} onOpenChange={(o) => !o && setCredentials(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-success" />Organizer account created</DialogTitle>
+            <DialogDescription>Share these credentials with {credentials?.org}. They won't be shown again.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Email</Label>
+              <div className="flex items-center justify-between gap-2">
+                <code className="text-sm break-all">{credentials?.email}</code>
+                <Button size="sm" variant="ghost" onClick={() => copy(credentials!.email)}><Copy className="h-3.5 w-3.5" /></Button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1"><KeyRound className="h-3 w-3" />Temporary password</Label>
+              <div className="flex items-center justify-between gap-2">
+                <code className="text-sm break-all">{credentials?.password}</code>
+                <Button size="sm" variant="ghost" onClick={() => copy(credentials!.password)}><Copy className="h-3.5 w-3.5" /></Button>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Ask the organizer to sign in at /auth and change their password from Settings.</p>
+          <DialogFooter><Button onClick={() => setCredentials(null)}>Done</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
