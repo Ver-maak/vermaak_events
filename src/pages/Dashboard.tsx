@@ -101,6 +101,35 @@ const Dashboard = () => {
           <p className="text-muted-foreground">{isOrganizer ? "Here's what's happening with your events." : "Discover events and manage your tickets."}</p>
         </div>
 
+        {/* Organization banner */}
+        {isOrganizer && organization && (
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-accent/5 to-transparent">
+            <CardContent className="p-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center"><Building2 className="h-5 w-5 text-primary" /></div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Organization</p>
+                  <p className="font-semibold leading-tight">{organization.name}</p>
+                  <p className="text-xs text-muted-foreground">/{organization.slug}</p>
+                </div>
+              </div>
+              <Badge variant="outline" className={organization.status === "active" ? "bg-success/10 text-success border-success/20" : "bg-destructive/10 text-destructive border-destructive/20"}>
+                {organization.status}
+              </Badge>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Quick actions for organizers */}
+        {isOrganizer && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Link to="/dashboard/events/new"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><Plus className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Create event</p><p className="text-xs text-muted-foreground">Launch a new event</p></CardContent></Card></Link>
+            <Link to="/dashboard/check-in"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><QrCode className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Check‑in</p><p className="text-xs text-muted-foreground">Scan tickets at the gate</p></CardContent></Card></Link>
+            <Link to="/dashboard/analytics"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><BarChart3 className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Analytics</p><p className="text-xs text-muted-foreground">Sales & attendance</p></CardContent></Card></Link>
+            <Link to="/dashboard/developer"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><Code2 className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Developer</p><p className="text-xs text-muted-foreground">API keys & webhooks</p></CardContent></Card></Link>
+          </div>
+        )}
+
         {/* Onboarding checklist */}
         {incomplete.length > 0 && (
           <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
