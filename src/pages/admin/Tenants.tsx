@@ -27,6 +27,8 @@ const Tenants = () => {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
+  const [provision, setProvision] = useState({ org_name: "", admin_name: "", email: "" });
+  const [credentials, setCredentials] = useState<{ email: string; password: string; org: string } | null>(null);
 
   const { data: organizers = [], isLoading } = useQuery({
     enabled: isSuperAdmin,
