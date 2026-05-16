@@ -43,6 +43,19 @@ const EventDetail = () => {
     },
   });
 
+  const { data: organization } = useQuery({
+    queryKey: ["org", event?.organization_id],
+    enabled: !!event?.organization_id,
+    queryFn: async () => {
+      const { data } = await supabase.from("organizations").select("id,name,slug").eq("id", event!.organization_id!).maybeSingle();
+      return data;
+    },
+  });
+  const isRotaract = !!(organization && (
+    organization.slug?.toLowerCase().includes("rotaract") ||
+    organization.name?.toLowerCase().includes("rotaract")
+  ));
+
   const setQty = (tierId: string, q: number) => setQuantities((p) => ({ ...p, [tierId]: Math.max(0, q) }));
 
   const total = (tiers || []).reduce((s, t) => s + (quantities[t.id] || 0) * Number(t.price), 0);
