@@ -495,6 +495,42 @@ export type Database = {
           },
         ]
       }
+      rotaract_members: {
+        Row: {
+          club_name: string | null
+          club_type: string | null
+          created_at: string
+          district_id: string
+          email: string | null
+          full_name: string
+          member_id: string
+          member_status: string | null
+          phone: string | null
+        }
+        Insert: {
+          club_name?: string | null
+          club_type?: string | null
+          created_at?: string
+          district_id?: string
+          email?: string | null
+          full_name: string
+          member_id: string
+          member_status?: string | null
+          phone?: string | null
+        }
+        Update: {
+          club_name?: string | null
+          club_type?: string | null
+          created_at?: string
+          district_id?: string
+          email?: string | null
+          full_name?: string
+          member_id?: string
+          member_status?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       ticket_tiers: {
         Row: {
           created_at: string
@@ -564,6 +600,7 @@ export type Database = {
           holder_email: string | null
           holder_name: string
           id: string
+          metadata: Json
           order_id: string
           tier_id: string | null
         }
@@ -576,6 +613,7 @@ export type Database = {
           holder_email?: string | null
           holder_name: string
           id?: string
+          metadata?: Json
           order_id: string
           tier_id?: string | null
         }
@@ -588,6 +626,7 @@ export type Database = {
           holder_email?: string | null
           holder_name?: string
           id?: string
+          metadata?: Json
           order_id?: string
           tier_id?: string | null
         }
@@ -865,6 +904,16 @@ export type Database = {
         }
         Returns: string
       }
+      create_ticket_order_v2: {
+        Args: {
+          _buyer_email: string
+          _buyer_name: string
+          _buyer_phone: string
+          _event_id: string
+          _items: Json
+        }
+        Returns: string
+      }
       get_user_org: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -874,6 +923,16 @@ export type Database = {
         Returns: boolean
       }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      lookup_rotaract_member: {
+        Args: { _query: string }
+        Returns: {
+          club_name: string
+          club_type: string
+          email: string
+          full_name: string
+          member_id: string
+        }[]
+      }
       mark_order_paid: {
         Args: { _method: string; _order_id: string; _reference: string }
         Returns: undefined
