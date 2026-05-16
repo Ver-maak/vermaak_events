@@ -11,6 +11,7 @@ import { formatMoney, formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
 import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
+import AttendeeInfoDialog, { type AttendeeHolder } from "@/components/AttendeeInfoDialog";
 
 const EventDetail = () => {
   const { slug } = useParams();
@@ -21,6 +22,7 @@ const EventDetail = () => {
   const [buyerEmail, setBuyerEmail] = useState(profile?.email || "");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [momoOpen, setMomoOpen] = useState(false);
+  const [attendeeOpen, setAttendeeOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   const { data: event, isLoading } = useQuery({
@@ -40,6 +42,19 @@ const EventDetail = () => {
       return data || [];
     },
   });
+
+  const { data: organization } = useQuery({
+    queryKey: ["org", event?.organization_id],
+    enabled: !!event?.organization_id,
+    queryFn: async () => {
+      const { data } = await supabase.from("organizations").select("id,name,slug").eq("id", event!.organization_id!).maybeSingle();
+      return data;
+    },
+  });
+  const isRotaract = !!(organization && (
+    organization.slug?.toLowerCase().includes("rotaract") ||
+    organization.name?.toLowerCase().includes("rotaract")
+  ));
 
   const setQty = (tierId: string, q: number) => setQuantities((p) => ({ ...p, [tierId]: Math.max(0, q) }));
 
@@ -92,6 +107,43 @@ const EventDetail = () => {
     },
     onError: (e: any) => toast({ title: "Checkout failed", description: e.message, variant: "destructive" }),
   });
+
+  // Rotaract checkout: capture per-ticket attendee info, then create order via v2 RPC.
+  const submitAttendeeOrder = async ({ items, buyer_name, buyer_email }: {
+    items: { tier_id: string; holders: AttendeeHolder[] }[];
+    buyer_name: string; buyer_email: string;
+  }) => {
+    if (!session) { navigate("/auth"); return; }
+    const finalBuyerName = buyerName?.trim() || buyer_name;
+    const finalBuyerEmail = buyerEmail?.trim() || buyer_email;
+    const { data: orderId, error } = await supabase.rpc("create_ticket_order_v2", {
+      _event_id: event!.id,
+      _buyer_name: finalBuyerName,
+      _buyer_email: finalBuyerEmail,
+      _buyer_phone: buyerPhone,
+      _items: items as any,
+    });
+    if (error) throw error;
+    setAttendeeOpen(false);
+    if (total === 0) {
+      toast({ title: "Tickets confirmed!", description: "Free order processed." });
+      navigate(`/dashboard/orders/${orderId}`);
+    } else {
+      setPendingOrderId(orderId as string);
+      setMomoOpen(true);
+    }
+  };
+
+  const startCheckout = () => {
+    if (!session) { navigate("/auth"); return; }
+    if (totalQty < 1) return;
+    if (!buyerName || !buyerEmail) {
+      toast({ title: "Missing info", description: "Name and email required", variant: "destructive" });
+      return;
+    }
+    if (isRotaract) setAttendeeOpen(true);
+    else checkout.mutate();
+  };
 
   const handleMomoConfirm = async ({ method, phone }: { method: string; phone: string; reference: string }) => {
     if (!pendingOrderId) throw new Error("No pending order");
@@ -218,7 +270,7 @@ const EventDetail = () => {
                         </div>
                         <Button
                           className="w-full gap-2"
-                          onClick={() => checkout.mutate()}
+                          onClick={startCheckout}
                           disabled={checkout.isPending || (total > 0 && !feeQuote)}
                         >
                           <Ticket className="h-4 w-4" />
@@ -226,9 +278,13 @@ const EventDetail = () => {
                             ? "Processing…"
                             : total === 0
                               ? "Get tickets"
-                              : `Pay ${formatMoney(feeQuote ? feeQuote.grandTotal : total, event.currency)} with Mobile Money`}
+                              : isRotaract
+                                ? "Continue — attendee details"
+                                : `Pay ${formatMoney(feeQuote ? feeQuote.grandTotal : total, event.currency)} with Mobile Money`}
                         </Button>
-                        <p className="text-[10px] text-muted-foreground text-center">Pay with MTN MoMo or Airtel Money.</p>
+                        <p className="text-[10px] text-muted-foreground text-center">
+                          {isRotaract ? "We'll ask for each attendee's club & member info next." : "Pay with MTN MoMo or Airtel Money."}
+                        </p>
                       </>
                     )}
                   </div>
@@ -238,6 +294,17 @@ const EventDetail = () => {
           </div>
         </div>
       </div>
+
+      <AttendeeInfoDialog
+        open={attendeeOpen}
+        onOpenChange={setAttendeeOpen}
+        defaultBuyerName={buyerName}
+        defaultBuyerEmail={buyerEmail}
+        lines={(tiers || [])
+          .filter((t) => (quantities[t.id] || 0) > 0)
+          .map((t) => ({ tier_id: t.id, tier_name: t.name, quantity: quantities[t.id] || 0 }))}
+        onSubmit={submitAttendeeOrder}
+      />
 
       <MoMoPaymentDialog
         open={momoOpen}
