@@ -108,6 +108,43 @@ const EventDetail = () => {
     onError: (e: any) => toast({ title: "Checkout failed", description: e.message, variant: "destructive" }),
   });
 
+  // Rotaract checkout: capture per-ticket attendee info, then create order via v2 RPC.
+  const submitAttendeeOrder = async ({ items, buyer_name, buyer_email }: {
+    items: { tier_id: string; holders: AttendeeHolder[] }[];
+    buyer_name: string; buyer_email: string;
+  }) => {
+    if (!session) { navigate("/auth"); return; }
+    const finalBuyerName = buyerName?.trim() || buyer_name;
+    const finalBuyerEmail = buyerEmail?.trim() || buyer_email;
+    const { data: orderId, error } = await supabase.rpc("create_ticket_order_v2", {
+      _event_id: event!.id,
+      _buyer_name: finalBuyerName,
+      _buyer_email: finalBuyerEmail,
+      _buyer_phone: buyerPhone,
+      _items: items as any,
+    });
+    if (error) throw error;
+    setAttendeeOpen(false);
+    if (total === 0) {
+      toast({ title: "Tickets confirmed!", description: "Free order processed." });
+      navigate(`/dashboard/orders/${orderId}`);
+    } else {
+      setPendingOrderId(orderId as string);
+      setMomoOpen(true);
+    }
+  };
+
+  const startCheckout = () => {
+    if (!session) { navigate("/auth"); return; }
+    if (totalQty < 1) return;
+    if (!buyerName || !buyerEmail) {
+      toast({ title: "Missing info", description: "Name and email required", variant: "destructive" });
+      return;
+    }
+    if (isRotaract) setAttendeeOpen(true);
+    else checkout.mutate();
+  };
+
   const handleMomoConfirm = async ({ method, phone }: { method: string; phone: string; reference: string }) => {
     if (!pendingOrderId) throw new Error("No pending order");
     // 1. Create payment intent (provider_ref tracked server-side)
