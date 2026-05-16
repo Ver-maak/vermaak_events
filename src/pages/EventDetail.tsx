@@ -22,6 +22,7 @@ const EventDetail = () => {
   const [buyerEmail, setBuyerEmail] = useState(profile?.email || "");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [momoOpen, setMomoOpen] = useState(false);
+  const [attendeeOpen, setAttendeeOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   const { data: event, isLoading } = useQuery({
