@@ -295,6 +295,17 @@ const EventDetail = () => {
         </div>
       </div>
 
+      <AttendeeInfoDialog
+        open={attendeeOpen}
+        onOpenChange={setAttendeeOpen}
+        defaultBuyerName={buyerName}
+        defaultBuyerEmail={buyerEmail}
+        lines={(tiers || [])
+          .filter((t) => (quantities[t.id] || 0) > 0)
+          .map((t) => ({ tier_id: t.id, tier_name: t.name, quantity: quantities[t.id] || 0 }))}
+        onSubmit={submitAttendeeOrder}
+      />
+
       <MoMoPaymentDialog
         open={momoOpen}
         onOpenChange={setMomoOpen}
