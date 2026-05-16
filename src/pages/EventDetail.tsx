@@ -11,6 +11,7 @@ import { formatMoney, formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
 import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
+import AttendeeInfoDialog, { type AttendeeHolder } from "@/components/AttendeeInfoDialog";
 
 const EventDetail = () => {
   const { slug } = useParams();
