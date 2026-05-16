@@ -270,7 +270,7 @@ const EventDetail = () => {
                         </div>
                         <Button
                           className="w-full gap-2"
-                          onClick={() => checkout.mutate()}
+                          onClick={startCheckout}
                           disabled={checkout.isPending || (total > 0 && !feeQuote)}
                         >
                           <Ticket className="h-4 w-4" />
@@ -278,9 +278,13 @@ const EventDetail = () => {
                             ? "Processing…"
                             : total === 0
                               ? "Get tickets"
-                              : `Pay ${formatMoney(feeQuote ? feeQuote.grandTotal : total, event.currency)} with Mobile Money`}
+                              : isRotaract
+                                ? "Continue — attendee details"
+                                : `Pay ${formatMoney(feeQuote ? feeQuote.grandTotal : total, event.currency)} with Mobile Money`}
                         </Button>
-                        <p className="text-[10px] text-muted-foreground text-center">Pay with MTN MoMo or Airtel Money.</p>
+                        <p className="text-[10px] text-muted-foreground text-center">
+                          {isRotaract ? "We'll ask for each attendee's club & member info next." : "Pay with MTN MoMo or Airtel Money."}
+                        </p>
                       </>
                     )}
                   </div>
