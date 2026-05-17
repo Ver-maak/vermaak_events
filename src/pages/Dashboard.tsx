@@ -120,15 +120,34 @@ const Dashboard = () => {
           </Card>
         )}
 
-        {/* Quick actions for organizers */}
-        {isOrganizer && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Link to="/dashboard/events/new"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><Plus className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Create event</p><p className="text-xs text-muted-foreground">Launch a new event</p></CardContent></Card></Link>
-            <Link to="/dashboard/check-in"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><QrCode className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Check‑in</p><p className="text-xs text-muted-foreground">Scan tickets at the gate</p></CardContent></Card></Link>
-            <Link to="/dashboard/analytics"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><BarChart3 className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Analytics</p><p className="text-xs text-muted-foreground">Sales & attendance</p></CardContent></Card></Link>
-            <Link to="/dashboard/developer"><Card className="hover:border-primary/40 transition-colors h-full"><CardContent className="p-4"><Code2 className="h-5 w-5 text-primary mb-2" /><p className="font-medium text-sm">Developer</p><p className="text-xs text-muted-foreground">API keys & webhooks</p></CardContent></Card></Link>
-          </div>
-        )}
+        {/* Quick actions — only the modules enabled for this tenant */}
+        {isOrganizer && (() => {
+          const flags = (organization?.feature_flags || {}) as Record<string, boolean>;
+          const tiles: { href: string; icon: any; title: string; sub: string; enabled: boolean }[] = [
+            { href: "/dashboard/events/new", icon: Plus, title: "Create event", sub: "Launch a new event", enabled: true },
+            { href: "/dashboard/check-in", icon: QrCode, title: "Check‑in", sub: "Scan tickets at the gate", enabled: true },
+            { href: "/dashboard/analytics", icon: BarChart3, title: "Analytics", sub: "Sales & attendance", enabled: true },
+            { href: "/dashboard/developer", icon: Code2, title: "Developer", sub: "API keys & webhooks", enabled: true },
+            { href: "/dashboard/team", icon: Users, title: "Team", sub: "Invite staff & roles", enabled: true },
+            { href: "/dashboard/wallets", icon: DollarSign, title: "Wallets", sub: "Multi‑currency balances", enabled: !!flags.wallets || isSuperAdmin },
+            { href: "/dashboard/transactions", icon: TrendingUp, title: "Transactions", sub: "Money movement", enabled: !!flags.payments || isSuperAdmin },
+          ].filter((t) => t.enabled);
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {tiles.map((t) => (
+                <Link key={t.href} to={t.href}>
+                  <Card className="hover:border-primary/40 transition-colors h-full">
+                    <CardContent className="p-4">
+                      <t.icon className="h-5 w-5 text-primary mb-2" />
+                      <p className="font-medium text-sm">{t.title}</p>
+                      <p className="text-xs text-muted-foreground">{t.sub}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Onboarding checklist */}
         {incomplete.length > 0 && (
