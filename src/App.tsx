@@ -24,14 +24,16 @@ import DashboardSettings from "./pages/DashboardSettings";
 import FeeManagement from "./pages/FeeManagement";
 import Tenants from "./pages/admin/Tenants";
 import Developer from "./pages/Developer";
+import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session, loading } = useAuth();
+  const { session, loading, profile } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading...</div></div>;
   if (!session) return <Navigate to="/auth" replace />;
+  if (profile?.must_change_password) return <Navigate to="/change-password" replace />;
   return <>{children}</>;
 };
 
@@ -45,6 +47,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/change-password" element={<ChangePassword />} />
             <Route path="/events" element={<Browse />} />
             <Route path="/events/:slug" element={<EventDetail />} />
             <Route path="/legal/:doc" element={<Legal />} />
