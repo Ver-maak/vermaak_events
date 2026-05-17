@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       id: userId!,
       email: EMAIL,
       full_name: "Vermaak Super Admin",
-      must_change_password: false,
+      must_change_password: true,
       status: "active",
     } as any);
 
