@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { Building2, Plus, Settings, Copy, KeyRound, CheckCircle2 } from "lucide-react";
+import { Building2, Plus, Settings, Copy, KeyRound, CheckCircle2, Database, Upload, X } from "lucide-react";
 
 const featureLabels: Record<string, string> = {
   wallets: "Wallets",
@@ -27,6 +27,9 @@ const Organizations = () => {
   const [newOrg, setNewOrg] = useState({ name: "", slug: "", email: "", admin_name: "" });
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{ email: string; password: string; org: string } | null>(null);
+  const [attachDb, setAttachDb] = useState(false);
+  const [dbFile, setDbFile] = useState<File | null>(null);
+  const [uploadingDb, setUploadingDb] = useState(false);
 
   const { data: orgs, isLoading } = useQuery({
     queryKey: ["organizations"],
@@ -51,11 +54,40 @@ const Organizations = () => {
       if ((data as any)?.error) throw new Error((data as any).error);
       return data as any;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      const orgName = data.organization?.name || newOrg.name;
+      const orgId = data.organization?.id;
+
+      // Optional database upload
+      if (attachDb && dbFile && orgId) {
+        setUploadingDb(true);
+        try {
+          const safe = dbFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const path = `${orgId}/${Date.now()}-${safe}`;
+          const { error: upErr } = await supabase.storage
+            .from("org-databases")
+            .upload(path, dbFile, { upsert: false, contentType: dbFile.type || undefined });
+          if (upErr) throw upErr;
+          await supabase.from("audit_logs").insert({
+            organization_id: orgId,
+            action: "organization.database_attached",
+            resource_type: "organization",
+            resource_id: orgId,
+            details: { path, filename: dbFile.name, size: dbFile.size, mime: dbFile.type },
+          });
+          toast({ title: "Database attached", description: dbFile.name });
+        } catch (err: any) {
+          toast({ title: "Database upload failed", description: err.message, variant: "destructive" });
+        } finally {
+          setUploadingDb(false);
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
       setCreateOpen(false);
-      const orgName = data.organization?.name || newOrg.name;
       setNewOrg({ name: "", slug: "", email: "", admin_name: "" });
+      setAttachDb(false);
+      setDbFile(null);
       if (data.credentials) {
         setCredentials({ email: data.credentials.email, password: data.credentials.password, org: orgName });
       } else {
@@ -117,10 +149,40 @@ const Organizations = () => {
                   <Input type="email" value={newOrg.email} onChange={(e) => setNewOrg({ ...newOrg, email: e.target.value })} placeholder="admin@acme.com" />
                   <p className="text-xs text-muted-foreground">A temporary password will be generated and shown once.</p>
                 </div>
+
+                {/* Attach database step */}
+                <div className="rounded-lg border p-3 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2">
+                      <Database className="h-4 w-4 mt-0.5 text-primary" />
+                      <div>
+                        <Label className="text-sm">Attach a database?</Label>
+                        <p className="text-xs text-muted-foreground">Upload an existing member list or data file (Excel, CSV, JSON, etc.) to link to this organization.</p>
+                      </div>
+                    </div>
+                    <Switch checked={attachDb} onCheckedChange={(v) => { setAttachDb(v); if (!v) setDbFile(null); }} />
+                  </div>
+                  {attachDb && (
+                    <div className="space-y-2">
+                      <Input
+                        type="file"
+                        accept=".xlsx,.xls,.csv,.json,.txt,.tsv,.numbers,.ods,.sql"
+                        onChange={(e) => setDbFile(e.target.files?.[0] || null)}
+                      />
+                      {dbFile && (
+                        <div className="flex items-center justify-between text-xs bg-muted/40 rounded px-2 py-1.5">
+                          <span className="flex items-center gap-1.5 truncate"><Upload className="h-3 w-3" />{dbFile.name} <span className="text-muted-foreground">({(dbFile.size / 1024).toFixed(1)} KB)</span></span>
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setDbFile(null)}><X className="h-3 w-3" /></Button>
+                        </div>
+                      )}
+                      <p className="text-xs text-muted-foreground">Max 20MB. Stored privately and accessible only to super admins.</p>
+                    </div>
+                  )}
+                </div>
               </div>
               <DialogFooter>
-                <Button onClick={() => createMutation.mutate(newOrg)} disabled={createMutation.isPending || !newOrg.name || !newOrg.slug || !newOrg.email}>
-                  {createMutation.isPending ? "Creating..." : "Create & provision"}
+                <Button onClick={() => createMutation.mutate(newOrg)} disabled={createMutation.isPending || uploadingDb || !newOrg.name || !newOrg.slug || !newOrg.email || (attachDb && !dbFile)}>
+                  {createMutation.isPending ? "Creating..." : uploadingDb ? "Uploading database..." : "Create & provision"}
                 </Button>
               </DialogFooter>
             </DialogContent>
