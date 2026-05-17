@@ -74,10 +74,11 @@ Deno.serve(async (req) => {
       userId = created.user.id;
     }
 
-    // Update profile: link organization + name
+    // Update profile: link organization + name + force-change flag for new users
     await sb.from("profiles").update({
       organization_id: organizationId,
       full_name: fullName || undefined,
+      must_change_password: !alreadyExisted,
     }).eq("id", userId!);
 
     // Grant organizer role (idempotent)

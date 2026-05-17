@@ -456,6 +456,7 @@ export type Database = {
           full_name: string | null
           id: string
           kyc_status: string | null
+          must_change_password: boolean
           organization_id: string | null
           phone: string | null
           status: string
@@ -468,6 +469,7 @@ export type Database = {
           full_name?: string | null
           id: string
           kyc_status?: string | null
+          must_change_password?: boolean
           organization_id?: string | null
           phone?: string | null
           status?: string
@@ -480,6 +482,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           kyc_status?: string | null
+          must_change_password?: boolean
           organization_id?: string | null
           phone?: string | null
           status?: string

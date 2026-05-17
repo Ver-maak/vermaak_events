@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, UserCheck, Users, AlertCircle } from "lucide-react";
+import { Loader2, UserCheck, Users, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AttendeeType = "rotarian" | "rotaractor" | "guest";
@@ -68,23 +68,30 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
   };
   const updateGroup = (patch: Partial<AttendeeHolder>) => setGroupHolder((g) => ({ ...g, ...patch }));
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const proceed = async () => {
     setError("");
     const list = mode === "group"
       ? Array.from({ length: totalQty }, (_, i) => ({
           ...groupHolder,
-          name: `${groupHolder.name} #${i + 1}`,
+          name: `${groupHolder.name.trim()} #${i + 1}`,
         }))
       : holders;
 
     for (let i = 0; i < list.length; i++) {
       const h = list[i];
-      if (!h.name?.trim()) return setError(`Ticket ${i + 1}: name required`);
-      if (!h.email?.trim()) return setError(`Ticket ${i + 1}: email required`);
+      const label = `Ticket ${i + 1}`;
+      if (!h.name?.trim()) return setError(`${label}: full name is required`);
+      if (h.name.trim().length < 2) return setError(`${label}: name looks too short`);
+      if (!h.email?.trim()) return setError(`${label}: email is required`);
+      if (!EMAIL_RE.test(h.email.trim())) return setError(`${label}: email format is invalid`);
       if (h.attendee_type === "rotarian" && !h.rotary_club?.trim())
-        return setError(`Ticket ${i + 1}: Rotary club required`);
-      if (h.attendee_type === "rotaractor" && (!h.rotary_club || !h.member_id))
-        return setError(`Ticket ${i + 1}: please match a Rotaractor record`);
+        return setError(`${label}: Rotary club is required for Rotarians`);
+      if (h.attendee_type === "rotaractor") {
+        if (!h.member_id?.trim() || !h.rotary_club?.trim())
+          return setError(`${label}: please pick your Rotaractor record from the directory (Member ID + club required)`);
+      }
     }
 
     // Build items per tier
@@ -99,8 +106,8 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
       setSubmitting(true);
       await onSubmit({
         items,
-        buyer_name: mode === "group" ? groupHolder.name : list[0].name,
-        buyer_email: mode === "group" ? groupHolder.email : list[0].email,
+        buyer_name: mode === "group" ? groupHolder.name.trim() : list[0].name,
+        buyer_email: mode === "group" ? groupHolder.email.trim() : list[0].email,
       });
     } catch (e: any) {
       setError(e.message || "Failed to continue");
@@ -187,27 +194,38 @@ function tierNameForIndex(lines: TierLine[], i: number) {
 }
 
 function HolderForm({ title, holder, onChange }: { title: string; holder: AttendeeHolder; onChange: (p: Partial<AttendeeHolder>) => void }) {
-  const [lookup, setLookup] = useState(holder.email || "");
+  const [lookup, setLookup] = useState("");
   const [results, setResults] = useState<any[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [touched, setTouched] = useState(false);
 
-  const runLookup = async () => {
-    if (!lookup || lookup.trim().length < 2) return;
+  // Debounced Rotaractor lookup
+  useEffect(() => {
+    if (holder.attendee_type !== "rotaractor") { setResults(null); return; }
+    const q = lookup.trim();
+    if (q.length < 2) { setResults(null); return; }
     setSearching(true);
-    const { data, error } = await supabase.rpc("lookup_rotaract_member", { _query: lookup.trim() });
-    setSearching(false);
-    if (!error) setResults(data || []);
-  };
+    const t = setTimeout(async () => {
+      const { data, error } = await supabase.rpc("lookup_rotaract_member", { _query: q });
+      setSearching(false);
+      if (!error) setResults(data || []);
+    }, 350);
+    return () => { clearTimeout(t); setSearching(false); };
+  }, [lookup, holder.attendee_type]);
 
   const pickResult = (m: any) => {
     onChange({
       name: m.full_name,
-      email: holder.email || m.email || "",
+      email: m.email || holder.email || "",
       rotary_club: m.club_name,
       member_id: m.member_id,
     });
     setResults(null);
+    setLookup(m.full_name);
+    setTouched(false);
   };
+
+  const emailValid = !holder.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(holder.email);
 
   return (
     <div className="border border-border rounded-lg p-4 space-y-3">
@@ -217,7 +235,7 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
         <Label className="text-xs">I am a…</Label>
         <RadioGroup
           value={holder.attendee_type}
-          onValueChange={(v) => onChange({ attendee_type: v as AttendeeType, rotary_club: "", member_id: "" })}
+          onValueChange={(v) => { onChange({ attendee_type: v as AttendeeType, rotary_club: "", member_id: "" }); setLookup(""); setResults(null); }}
           className="grid grid-cols-3 gap-2 mt-1"
         >
           {[
@@ -227,7 +245,7 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
           ].map((opt) => (
             <Label
               key={opt.v}
-              className={`border rounded-md py-2 text-center text-sm cursor-pointer ${holder.attendee_type===opt.v?"border-primary bg-primary/5 font-medium":"border-border"}`}
+              className={`border rounded-md py-2 text-center text-sm cursor-pointer ${holder.attendee_type === opt.v ? "border-primary bg-primary/5 font-medium" : "border-border"}`}
             >
               <RadioGroupItem value={opt.v} className="sr-only" />
               {opt.l}
@@ -243,7 +261,15 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
         </div>
         <div>
           <Label className="text-xs">Email *</Label>
-          <Input type="email" value={holder.email} onChange={(e) => onChange({ email: e.target.value })} placeholder="jane@example.com" />
+          <Input
+            type="email"
+            value={holder.email}
+            onChange={(e) => onChange({ email: e.target.value })}
+            placeholder="jane@example.com"
+            aria-invalid={!emailValid}
+            className={!emailValid ? "border-destructive" : ""}
+          />
+          {!emailValid && <p className="text-[10px] text-destructive mt-1">Enter a valid email address</p>}
         </div>
       </div>
 
@@ -260,21 +286,16 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
 
       {holder.attendee_type === "rotaractor" && (
         <div className="space-y-2">
-          <Label className="text-xs">Find your record (email, name, or Member ID)</Label>
-          <div className="flex gap-2">
+          <Label className="text-xs">Find your record — type your email, name, or Member ID</Label>
+          <div className="relative">
             <Input
               value={lookup}
-              onChange={(e) => setLookup(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), runLookup())}
-              placeholder="you@example.com"
+              onChange={(e) => { setLookup(e.target.value); setTouched(true); }}
+              placeholder="Start typing (min. 2 characters)…"
             />
-            <Button type="button" variant="outline" size="icon" onClick={runLookup} disabled={searching}>
-              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            </Button>
+            {searching && <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-2.5 text-muted-foreground" />}
           </div>
-          {results && results.length === 0 && (
-            <p className="text-xs text-muted-foreground">No matching Rotaractor found. Try a different email or name.</p>
-          )}
+
           {results && results.length > 0 && (
             <div className="border rounded-md divide-y max-h-44 overflow-y-auto">
               {results.map((m) => (
@@ -290,11 +311,23 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
               ))}
             </div>
           )}
-          {holder.member_id && (
+
+          {touched && !searching && results && results.length === 0 && lookup.trim().length >= 2 && (
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              No matching Rotaractor found in District 9213. Double-check spelling or your Member ID.
+            </p>
+          )}
+
+          {holder.member_id ? (
             <div className="flex flex-wrap gap-2 pt-1">
               <Badge variant="secondary">Club: {holder.rotary_club}</Badge>
               <Badge variant="secondary">Member ID: {holder.member_id}</Badge>
             </div>
+          ) : (
+            <p className="text-[10px] text-muted-foreground">
+              You must select a record from the directory to continue as a Rotaractor.
+            </p>
           )}
         </div>
       )}
