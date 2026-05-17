@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, UserCheck, Users, AlertCircle } from "lucide-react";
+import { Loader2, UserCheck, Users, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AttendeeType = "rotarian" | "rotaractor" | "guest";
