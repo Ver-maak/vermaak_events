@@ -194,27 +194,38 @@ function tierNameForIndex(lines: TierLine[], i: number) {
 }
 
 function HolderForm({ title, holder, onChange }: { title: string; holder: AttendeeHolder; onChange: (p: Partial<AttendeeHolder>) => void }) {
-  const [lookup, setLookup] = useState(holder.email || "");
+  const [lookup, setLookup] = useState("");
   const [results, setResults] = useState<any[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [touched, setTouched] = useState(false);
 
-  const runLookup = async () => {
-    if (!lookup || lookup.trim().length < 2) return;
+  // Debounced Rotaractor lookup
+  useEffect(() => {
+    if (holder.attendee_type !== "rotaractor") { setResults(null); return; }
+    const q = lookup.trim();
+    if (q.length < 2) { setResults(null); return; }
     setSearching(true);
-    const { data, error } = await supabase.rpc("lookup_rotaract_member", { _query: lookup.trim() });
-    setSearching(false);
-    if (!error) setResults(data || []);
-  };
+    const t = setTimeout(async () => {
+      const { data, error } = await supabase.rpc("lookup_rotaract_member", { _query: q });
+      setSearching(false);
+      if (!error) setResults(data || []);
+    }, 350);
+    return () => { clearTimeout(t); setSearching(false); };
+  }, [lookup, holder.attendee_type]);
 
   const pickResult = (m: any) => {
     onChange({
       name: m.full_name,
-      email: holder.email || m.email || "",
+      email: m.email || holder.email || "",
       rotary_club: m.club_name,
       member_id: m.member_id,
     });
     setResults(null);
+    setLookup(m.full_name);
+    setTouched(false);
   };
+
+  const emailValid = !holder.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(holder.email);
 
   return (
     <div className="border border-border rounded-lg p-4 space-y-3">
@@ -224,7 +235,7 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
         <Label className="text-xs">I am a…</Label>
         <RadioGroup
           value={holder.attendee_type}
-          onValueChange={(v) => onChange({ attendee_type: v as AttendeeType, rotary_club: "", member_id: "" })}
+          onValueChange={(v) => { onChange({ attendee_type: v as AttendeeType, rotary_club: "", member_id: "" }); setLookup(""); setResults(null); }}
           className="grid grid-cols-3 gap-2 mt-1"
         >
           {[
@@ -234,7 +245,7 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
           ].map((opt) => (
             <Label
               key={opt.v}
-              className={`border rounded-md py-2 text-center text-sm cursor-pointer ${holder.attendee_type===opt.v?"border-primary bg-primary/5 font-medium":"border-border"}`}
+              className={`border rounded-md py-2 text-center text-sm cursor-pointer ${holder.attendee_type === opt.v ? "border-primary bg-primary/5 font-medium" : "border-border"}`}
             >
               <RadioGroupItem value={opt.v} className="sr-only" />
               {opt.l}
@@ -250,7 +261,15 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
         </div>
         <div>
           <Label className="text-xs">Email *</Label>
-          <Input type="email" value={holder.email} onChange={(e) => onChange({ email: e.target.value })} placeholder="jane@example.com" />
+          <Input
+            type="email"
+            value={holder.email}
+            onChange={(e) => onChange({ email: e.target.value })}
+            placeholder="jane@example.com"
+            aria-invalid={!emailValid}
+            className={!emailValid ? "border-destructive" : ""}
+          />
+          {!emailValid && <p className="text-[10px] text-destructive mt-1">Enter a valid email address</p>}
         </div>
       </div>
 
@@ -267,21 +286,16 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
 
       {holder.attendee_type === "rotaractor" && (
         <div className="space-y-2">
-          <Label className="text-xs">Find your record (email, name, or Member ID)</Label>
-          <div className="flex gap-2">
+          <Label className="text-xs">Find your record — type your email, name, or Member ID</Label>
+          <div className="relative">
             <Input
               value={lookup}
-              onChange={(e) => setLookup(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), runLookup())}
-              placeholder="you@example.com"
+              onChange={(e) => { setLookup(e.target.value); setTouched(true); }}
+              placeholder="Start typing (min. 2 characters)…"
             />
-            <Button type="button" variant="outline" size="icon" onClick={runLookup} disabled={searching}>
-              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            </Button>
+            {searching && <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-2.5 text-muted-foreground" />}
           </div>
-          {results && results.length === 0 && (
-            <p className="text-xs text-muted-foreground">No matching Rotaractor found. Try a different email or name.</p>
-          )}
+
           {results && results.length > 0 && (
             <div className="border rounded-md divide-y max-h-44 overflow-y-auto">
               {results.map((m) => (
@@ -297,11 +311,23 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
               ))}
             </div>
           )}
-          {holder.member_id && (
+
+          {touched && !searching && results && results.length === 0 && lookup.trim().length >= 2 && (
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              No matching Rotaractor found in District 9213. Double-check spelling or your Member ID.
+            </p>
+          )}
+
+          {holder.member_id ? (
             <div className="flex flex-wrap gap-2 pt-1">
               <Badge variant="secondary">Club: {holder.rotary_club}</Badge>
               <Badge variant="secondary">Member ID: {holder.member_id}</Badge>
             </div>
+          ) : (
+            <p className="text-[10px] text-muted-foreground">
+              You must select a record from the directory to continue as a Rotaractor.
+            </p>
           )}
         </div>
       )}
