@@ -86,7 +86,8 @@ const Organizations = () => {
   // Simulated progress for storage uploads (SDK doesn't expose progress events)
   const runWithProgress = async <T,>(setProgress: (n: number) => void, fn: () => Promise<T>): Promise<T> => {
     setProgress(5);
-    const timer = setInterval(() => setProgress((p) => (p < 85 ? p + Math.random() * 8 : p)), 250);
+    let p = 5;
+    const timer = setInterval(() => { if (p < 85) { p += Math.random() * 8; setProgress(Math.min(p, 85)); } }, 250);
     try {
       const res = await fn();
       setProgress(100);
