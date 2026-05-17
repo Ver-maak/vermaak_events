@@ -68,23 +68,30 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
   };
   const updateGroup = (patch: Partial<AttendeeHolder>) => setGroupHolder((g) => ({ ...g, ...patch }));
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const proceed = async () => {
     setError("");
     const list = mode === "group"
       ? Array.from({ length: totalQty }, (_, i) => ({
           ...groupHolder,
-          name: `${groupHolder.name} #${i + 1}`,
+          name: `${groupHolder.name.trim()} #${i + 1}`,
         }))
       : holders;
 
     for (let i = 0; i < list.length; i++) {
       const h = list[i];
-      if (!h.name?.trim()) return setError(`Ticket ${i + 1}: name required`);
-      if (!h.email?.trim()) return setError(`Ticket ${i + 1}: email required`);
+      const label = `Ticket ${i + 1}`;
+      if (!h.name?.trim()) return setError(`${label}: full name is required`);
+      if (h.name.trim().length < 2) return setError(`${label}: name looks too short`);
+      if (!h.email?.trim()) return setError(`${label}: email is required`);
+      if (!EMAIL_RE.test(h.email.trim())) return setError(`${label}: email format is invalid`);
       if (h.attendee_type === "rotarian" && !h.rotary_club?.trim())
-        return setError(`Ticket ${i + 1}: Rotary club required`);
-      if (h.attendee_type === "rotaractor" && (!h.rotary_club || !h.member_id))
-        return setError(`Ticket ${i + 1}: please match a Rotaractor record`);
+        return setError(`${label}: Rotary club is required for Rotarians`);
+      if (h.attendee_type === "rotaractor") {
+        if (!h.member_id?.trim() || !h.rotary_club?.trim())
+          return setError(`${label}: please pick your Rotaractor record from the directory (Member ID + club required)`);
+      }
     }
 
     // Build items per tier
@@ -99,8 +106,8 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
       setSubmitting(true);
       await onSubmit({
         items,
-        buyer_name: mode === "group" ? groupHolder.name : list[0].name,
-        buyer_email: mode === "group" ? groupHolder.email : list[0].email,
+        buyer_name: mode === "group" ? groupHolder.name.trim() : list[0].name,
+        buyer_email: mode === "group" ? groupHolder.email.trim() : list[0].email,
       });
     } catch (e: any) {
       setError(e.message || "Failed to continue");
