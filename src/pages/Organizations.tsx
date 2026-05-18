@@ -132,10 +132,30 @@ const Organizations = () => {
 
   const createMutation = useMutation({
     mutationFn: async (org: typeof newOrg) => {
+      const name = org.name?.trim();
+      const email = org.email?.trim().toLowerCase();
+      if (!name) throw new Error("Organization name is required");
+      if (!email || !/.+@.+\..+/.test(email)) throw new Error("A valid organizer email is required");
       const { data, error } = await supabase.functions.invoke("provision-organizer", {
-        body: { organization_name: org.name, slug: org.slug, email: org.email, full_name: org.admin_name },
+        body: {
+          organization_name: name,
+          slug: org.slug?.trim() || undefined,
+          email,
+          full_name: org.admin_name?.trim() || undefined,
+        },
       });
-      if (error) throw error;
+      if (error) {
+        // Try to surface the JSON error message from the edge function response
+        let detail = error.message;
+        try {
+          const resp = (error as any)?.context?.response;
+          if (resp && typeof resp.json === "function") {
+            const body = await resp.json();
+            if (body?.error) detail = body.error;
+          }
+        } catch { /* ignore */ }
+        throw new Error(detail);
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       return data as any;
     },
