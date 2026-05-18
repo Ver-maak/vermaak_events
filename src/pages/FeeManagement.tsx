@@ -183,9 +183,15 @@ const FeeManagement = () => {
           <TabsList>
             <TabsTrigger value="rates">Exchange Rates</TabsTrigger>
             <TabsTrigger value="tiers">Fee Tiers</TabsTrigger>
+            <TabsTrigger value="versions">Versions</TabsTrigger>
             <TabsTrigger value="simulator">Simulator</TabsTrigger>
             <TabsTrigger value="audit">Audit Log</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="versions" className="mt-4">
+            <VersionsTab />
+          </TabsContent>
+
 
           <TabsContent value="rates" className="mt-4">
             <Card>
