@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CheckCircle2, Loader2, Smartphone, XCircle } from "lucide-react";
 import { formatMoney } from "@/lib/format";
+import FeeBreakdown from "@/components/FeeBreakdown";
 
 export type MoMoProvider = "mtn_momo" | "airtel_money";
 
