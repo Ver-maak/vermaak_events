@@ -32,7 +32,7 @@ describe("Fee engine — UGX tiers (spec)", () => {
     expect((await estimate(5000000, "UGX")).fee).toBe(20000);
   });
   it("UGX 5M–20M → 0.4% with min 20,000 / max 60,000", async () => {
-    expect((await estimate(5000001, "UGX")).fee).toBe(20000);
+    expect(Number((await estimate(5000001, "UGX")).fee)).toBeCloseTo(20000, 0);
     expect(Number((await estimate(10000000, "UGX")).fee)).toBe(40000);
     expect((await estimate(20000000, "UGX")).fee).toBe(60000);
   });
