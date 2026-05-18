@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CheckCircle2, Loader2, Smartphone, XCircle } from "lucide-react";
 import { formatMoney } from "@/lib/format";
+import FeeBreakdown from "@/components/FeeBreakdown";
 
 export type MoMoProvider = "mtn_momo" | "airtel_money";
 
@@ -24,6 +25,7 @@ interface Props {
   currency: string;
   defaultPhone?: string;
   feeQuote?: FeeQuote | null;
+  organizationId?: string;
   onConfirm: (result: { method: MoMoProvider; phone: string; reference: string }) => Promise<void>;
 }
 
@@ -37,7 +39,7 @@ const fallbackFee = (subtotal: number) => {
   return Math.round(Math.min(5000, Math.max(500, subtotal * 0.03)));
 };
 
-const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone, feeQuote, onConfirm }: Props) => {
+const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone, feeQuote, organizationId, onConfirm }: Props) => {
   const processingFee = feeQuote ? feeQuote.fee : fallbackFee(amount);
   const grandTotal = feeQuote ? feeQuote.grandTotal : amount + processingFee;
   const tierLabel = feeQuote?.tierLabel;
@@ -132,7 +134,10 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
               <div className="flex justify-between">
                 <span className="font-semibold">Total to pay</span>
                 <span className="font-bold text-primary">{formatMoney(grandTotal, currency)}</span>
-              </div>
+            </div>
+            <div data-testid="fee-breakdown-confirm">
+              <FeeBreakdown amount={amount} currency={currency} organizationId={organizationId} />
+            </div>
               <p className="text-[10px] text-muted-foreground pt-1">This is the exact amount that will be deducted from your mobile money wallet.</p>
             </div>
             <div className="space-y-2">

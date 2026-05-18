@@ -91,6 +91,33 @@ export type Database = {
           },
         ]
       }
+      currency_rounding: {
+        Row: {
+          currency: Database["public"]["Enums"]["currency_code"]
+          decimals: number
+          id: string
+          min_unit: number
+          rounding_mode: string
+          updated_at: string
+        }
+        Insert: {
+          currency: Database["public"]["Enums"]["currency_code"]
+          decimals?: number
+          id?: string
+          min_unit?: number
+          rounding_mode?: string
+          updated_at?: string
+        }
+        Update: {
+          currency?: Database["public"]["Enums"]["currency_code"]
+          decimals?: number
+          id?: string
+          min_unit?: number
+          rounding_mode?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           capacity: number | null
@@ -180,7 +207,9 @@ export type Database = {
       }
       fee_audit_logs: {
         Row: {
+          context: string | null
           created_at: string
+          created_by: string | null
           exchange_rate: number | null
           fee_original_currency: number
           fee_ugx: number
@@ -192,9 +221,12 @@ export type Database = {
           tier_label: string
           transaction_id: string | null
           ugx_equivalent: number
+          version_id: string | null
         }
         Insert: {
+          context?: string | null
           created_at?: string
+          created_by?: string | null
           exchange_rate?: number | null
           fee_original_currency: number
           fee_ugx: number
@@ -206,9 +238,12 @@ export type Database = {
           tier_label: string
           transaction_id?: string | null
           ugx_equivalent: number
+          version_id?: string | null
         }
         Update: {
+          context?: string | null
           created_at?: string
+          created_by?: string | null
           exchange_rate?: number | null
           fee_original_currency?: number
           fee_ugx?: number
@@ -220,6 +255,7 @@ export type Database = {
           tier_label?: string
           transaction_id?: string | null
           ugx_equivalent?: number
+          version_id?: string | null
         }
         Relationships: [
           {
@@ -236,7 +272,47 @@ export type Database = {
             referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fee_audit_logs_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "fee_tier_versions"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      fee_tier_versions: {
+        Row: {
+          created_by: string | null
+          id: string
+          is_active: boolean
+          label: string
+          notes: string | null
+          organization_id: string | null
+          published_at: string
+          version_no: number
+        }
+        Insert: {
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          notes?: string | null
+          organization_id?: string | null
+          published_at?: string
+          version_no: number
+        }
+        Update: {
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          notes?: string | null
+          organization_id?: string | null
+          published_at?: string
+          version_no?: number
+        }
+        Relationships: []
       }
       fee_tiers: {
         Row: {
@@ -255,6 +331,7 @@ export type Database = {
           tier_label: string
           updated_at: string
           version: number
+          version_id: string | null
         }
         Insert: {
           created_at?: string
@@ -272,6 +349,7 @@ export type Database = {
           tier_label: string
           updated_at?: string
           version?: number
+          version_id?: string | null
         }
         Update: {
           created_at?: string
@@ -289,6 +367,7 @@ export type Database = {
           tier_label?: string
           updated_at?: string
           version?: number
+          version_id?: string | null
         }
         Relationships: [
           {
@@ -296,6 +375,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_tiers_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "fee_tier_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -917,6 +1003,15 @@ export type Database = {
         }
         Returns: string
       }
+      estimate_and_log: {
+        Args: {
+          _amount: number
+          _context?: string
+          _currency: Database["public"]["Enums"]["currency_code"]
+          _organization_id?: string
+        }
+        Returns: Json
+      }
       get_user_org: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -949,6 +1044,13 @@ export type Database = {
         Returns: Json
       }
       quote_order_fee: { Args: { _order_id: string }; Returns: Json }
+      round_currency: {
+        Args: {
+          _amount: number
+          _currency: Database["public"]["Enums"]["currency_code"]
+        }
+        Returns: number
+      }
       transfer_funds: {
         Args: {
           _amount: number
