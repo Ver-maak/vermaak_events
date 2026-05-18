@@ -546,4 +546,126 @@ const FeeManagement = () => {
   );
 };
 
+const VersionsTab = () => {
+  const queryClient = useQueryClient();
+  const { data: versions, isLoading } = useQuery({
+    queryKey: ["fee-tier-versions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fee_tier_versions")
+        .select("*")
+        .order("published_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const [label, setLabel] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const publish = useMutation({
+    mutationFn: async () => {
+      if (!label.trim()) throw new Error("Label is required");
+      const next =
+        Math.max(0, ...((versions || []).filter((v: any) => !v.organization_id).map((v: any) => v.version_no))) + 1;
+      // Deactivate previous global active
+      await supabase.from("fee_tier_versions").update({ is_active: false }).is("organization_id", null);
+      const { error } = await supabase.from("fee_tier_versions").insert({
+        version_no: next,
+        organization_id: null,
+        label,
+        notes: notes || null,
+        is_active: true,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fee-tier-versions"] });
+      setLabel("");
+      setNotes("");
+      toast({ title: "Version published" });
+    },
+    onError: (e: Error) => toast({ title: "Publish failed", description: e.message, variant: "destructive" }),
+  });
+
+  const activate = useMutation({
+    mutationFn: async (v: any) => {
+      await supabase
+        .from("fee_tier_versions")
+        .update({ is_active: false })
+        .filter("organization_id", v.organization_id ? "eq" : "is", v.organization_id ?? null);
+      const { error } = await supabase.from("fee_tier_versions").update({ is_active: true }).eq("id", v.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fee-tier-versions"] });
+      toast({ title: "Version activated" });
+    },
+    onError: (e: Error) => toast({ title: "Activation failed", description: e.message, variant: "destructive" }),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Pricing Versions</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-2 md:grid-cols-[1fr_2fr_auto] items-end">
+          <div>
+            <Label>Label</Label>
+            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Q3 2026 rates" />
+          </div>
+          <div>
+            <Label>Notes (optional)</Label>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Reason / changelog" />
+          </div>
+          <Button onClick={() => publish.mutate()} disabled={publish.isPending}>
+            <Plus className="h-4 w-4 mr-1" /> Publish new global version
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>#</TableHead>
+                <TableHead>Scope</TableHead>
+                <TableHead>Label</TableHead>
+                <TableHead>Published</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(versions || []).map((v: any) => (
+                <TableRow key={v.id}>
+                  <TableCell>v{v.version_no}</TableCell>
+                  <TableCell>{v.organization_id ? "Tenant" : "Global"}</TableCell>
+                  <TableCell>{v.label}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {new Date(v.published_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    {v.is_active ? <Badge>Active</Badge> : <Badge variant="outline">Inactive</Badge>}
+                  </TableCell>
+                  <TableCell>
+                    {!v.is_active && (
+                      <Button size="sm" variant="outline" onClick={() => activate.mutate(v)}>
+                        Activate
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 export default FeeManagement;
+
