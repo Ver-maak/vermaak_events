@@ -134,7 +134,10 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
               <div className="flex justify-between">
                 <span className="font-semibold">Total to pay</span>
                 <span className="font-bold text-primary">{formatMoney(grandTotal, currency)}</span>
-              </div>
+            </div>
+            <div data-testid="fee-breakdown-confirm">
+              <FeeBreakdown amount={amount} currency={currency} organizationId={organizationId} />
+            </div>
               <p className="text-[10px] text-muted-foreground pt-1">This is the exact amount that will be deducted from your mobile money wallet.</p>
             </div>
             <div className="space-y-2">
