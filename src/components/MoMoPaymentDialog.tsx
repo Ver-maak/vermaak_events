@@ -39,7 +39,7 @@ const fallbackFee = (subtotal: number) => {
   return Math.round(Math.min(5000, Math.max(500, subtotal * 0.03)));
 };
 
-const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone, feeQuote, onConfirm }: Props) => {
+const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone, feeQuote, organizationId, onConfirm }: Props) => {
   const processingFee = feeQuote ? feeQuote.fee : fallbackFee(amount);
   const grandTotal = feeQuote ? feeQuote.grandTotal : amount + processingFee;
   const tierLabel = feeQuote?.tierLabel;
