@@ -25,6 +25,7 @@ interface Props {
   currency: string;
   defaultPhone?: string;
   feeQuote?: FeeQuote | null;
+  organizationId?: string;
   onConfirm: (result: { method: MoMoProvider; phone: string; reference: string }) => Promise<void>;
 }
 
