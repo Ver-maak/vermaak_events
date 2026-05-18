@@ -6,40 +6,41 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { amount, currency, organization_id } = await req.json();
-
+    const { amount, currency, organization_id, context } = await req.json();
     if (!amount || !currency) {
-      return new Response(JSON.stringify({ error: "amount and currency are required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "amount and currency are required" }, 400);
     }
 
+    const auth = req.headers.get("Authorization") || "";
+    const isAuthed = auth.startsWith("Bearer ") && !auth.endsWith(Deno.env.get("SUPABASE_ANON_KEY") || "___");
+
+    // Use the user's JWT (so auth.uid() resolves inside estimate_and_log), otherwise service role for anon estimate.
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      isAuthed ? Deno.env.get("SUPABASE_ANON_KEY")! : Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      isAuthed ? { global: { headers: { Authorization: auth } } } : {}
     );
 
-    const { data, error } = await supabase.rpc("calculate_transaction_fee", {
+    const rpcName = isAuthed ? "estimate_and_log" : "calculate_transaction_fee";
+    const args: Record<string, unknown> = {
       _amount: amount,
       _currency: currency,
       _organization_id: organization_id || null,
-    });
+    };
+    if (isAuthed) args._context = context || "estimate";
 
+    const { data, error } = await supabase.rpc(rpcName, args);
     if (error) throw error;
 
-    return new Response(JSON.stringify(data), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json(data);
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: (err as Error).message }, 500);
   }
 });
+
+function json(b: unknown, s = 200) {
+  return new Response(JSON.stringify(b), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
