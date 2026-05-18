@@ -38,8 +38,8 @@ describe("FeeBreakdown E2E — backend estimate is rendered verbatim", () => {
     expect(screen.getByText("UGX 3,000")).toBeInTheDocument();
     // Total = amount + fee = 503,000 UGX
     expect(screen.getByText("UGX 503,000")).toBeInTheDocument();
-    // Net to recipient = original amount
-    expect(screen.getByText("UGX 500,000")).toBeInTheDocument();
+    // Net to recipient = original amount (appears twice: amount row + recipient row)
+    expect(screen.getAllByText("UGX 500,000").length).toBeGreaterThanOrEqual(2);
   });
 
   it("shows USD conversion + UGX equivalent rows", async () => {
