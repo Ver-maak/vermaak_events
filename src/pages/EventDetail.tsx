@@ -51,10 +51,13 @@ const EventDetail = () => {
       return data;
     },
   });
-  const isRotaract = !!(organization && (
-    organization.slug?.toLowerCase().includes("rotaract") ||
-    organization.name?.toLowerCase().includes("rotaract")
-  ));
+  const isRotaract = !!(
+    (organization?.slug?.toLowerCase().includes("rotaract")) ||
+    (organization?.name?.toLowerCase().includes("rotaract")) ||
+    (event?.slug?.toLowerCase().includes("rotaract")) ||
+    (event?.title?.toLowerCase().includes("rotaract")) ||
+    (event?.title?.toLowerCase().includes("trf"))
+  );
 
   const setQty = (tierId: string, q: number) => setQuantities((p) => ({ ...p, [tierId]: Math.max(0, q) }));
 
