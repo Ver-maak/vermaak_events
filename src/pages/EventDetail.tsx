@@ -137,12 +137,12 @@ const EventDetail = () => {
   const startCheckout = () => {
     if (!session) { navigate("/auth"); return; }
     if (totalQty < 1) return;
+    if (isRotaract) { setAttendeeOpen(true); return; }
     if (!buyerName || !buyerEmail) {
       toast({ title: "Missing info", description: "Name and email required", variant: "destructive" });
       return;
     }
-    if (isRotaract) setAttendeeOpen(true);
-    else checkout.mutate();
+    checkout.mutate();
   };
 
   const handleMomoConfirm = async ({ method, phone }: { method: string; phone: string; reference: string }) => {
@@ -260,14 +260,23 @@ const EventDetail = () => {
                       <Button className="w-full" onClick={() => navigate("/auth")}>Sign in to checkout</Button>
                     ) : (
                       <>
-                        <div className="space-y-2">
-                          <Label className="text-xs">Full name</Label>
-                          <Input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="Jane Doe" />
-                          <Label className="text-xs">Email</Label>
-                          <Input type="email" value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} placeholder="you@example.com" />
-                          <Label className="text-xs">Phone (optional)</Label>
-                          <Input value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} placeholder="+256 …" />
-                        </div>
+                        {!isRotaract && (
+                          <div className="space-y-2">
+                            <Label className="text-xs">Full name</Label>
+                            <Input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} placeholder="Jane Doe" />
+                            <Label className="text-xs">Email</Label>
+                            <Input type="email" value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} placeholder="you@example.com" />
+                            <Label className="text-xs">Phone (optional)</Label>
+                            <Input value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} placeholder="+256 …" />
+                          </div>
+                        )}
+                        {isRotaract && (
+                          <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+                            Next, you'll classify each attendee as <span className="font-medium text-foreground">Rotarian</span>,{" "}
+                            <span className="font-medium text-foreground">Rotaractor</span>, or{" "}
+                            <span className="font-medium text-foreground">Guest</span>. Rotaractors will be auto-matched against the District 9213 directory.
+                          </div>
+                        )}
                         <Button
                           className="w-full gap-2"
                           onClick={startCheckout}
