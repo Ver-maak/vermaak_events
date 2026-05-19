@@ -38,6 +38,9 @@ interface Props {
 }
 
 type NamingMode = "individual" | "group";
+type Step = "buyer" | "mode" | "details";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const blank = (buyer = "", email = ""): AttendeeHolder => ({
   name: buyer, email, attendee_type: "guest",
@@ -45,10 +48,10 @@ const blank = (buyer = "", email = ""): AttendeeHolder => ({
 
 const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyerEmail, lines, onSubmit }: Props) => {
   const totalQty = useMemo(() => lines.reduce((s, l) => s + l.quantity, 0), [lines]);
-  const [step, setStep] = useState<"mode" | "details">("mode");
+  const [step, setStep] = useState<Step>("buyer");
+  const [buyer, setBuyer] = useState<AttendeeHolder>(blank(defaultBuyerName, defaultBuyerEmail));
   const [mode, setMode] = useState<NamingMode>("individual");
   const [holders, setHolders] = useState<AttendeeHolder[]>([]);
-  const [groupHolder, setGroupHolder] = useState<AttendeeHolder>(blank(defaultBuyerName, defaultBuyerEmail));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -56,59 +59,84 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
     if (open) {
       setError("");
       setSubmitting(false);
-      setStep(totalQty > 1 ? "mode" : "details");
+      setStep("buyer");
       setMode("individual");
-      setHolders(Array.from({ length: totalQty }, () => blank("", defaultBuyerEmail)));
-      setGroupHolder(blank(defaultBuyerName, defaultBuyerEmail));
+      setBuyer(blank(defaultBuyerName, defaultBuyerEmail));
+      setHolders([]);
     }
-  }, [open, totalQty, defaultBuyerName, defaultBuyerEmail]);
+  }, [open, defaultBuyerName, defaultBuyerEmail]);
+
+  const validateHolder = (h: AttendeeHolder, label: string): string | null => {
+    if (!h.name?.trim()) return `${label}: full name is required`;
+    if (h.name.trim().length < 2) return `${label}: name looks too short`;
+    if (!h.email?.trim()) return `${label}: email is required`;
+    if (!EMAIL_RE.test(h.email.trim())) return `${label}: email format is invalid`;
+    if (h.attendee_type === "rotarian" && !h.rotary_club?.trim())
+      return `${label}: Rotary club is required for Rotarians`;
+    if (h.attendee_type === "rotaractor") {
+      if (!h.member_id?.trim() || !h.rotary_club?.trim())
+        return `${label}: please pick your Rotaractor record from the directory`;
+    }
+    return null;
+  };
+
+  const goFromBuyer = () => {
+    setError("");
+    const err = validateHolder(buyer, "Your details");
+    if (err) return setError(err);
+
+    // Single ticket: buyer IS the holder, finish.
+    if (totalQty <= 1) return finalize([buyer]);
+
+    // Multi: choose naming mode next
+    setStep("mode");
+  };
+
+  const goFromMode = () => {
+    setError("");
+    if (mode === "group") {
+      // All tickets named after buyer with #N suffix
+      const list = Array.from({ length: totalQty }, (_, i) => ({
+        ...buyer,
+        name: `${buyer.name.trim()} #${i + 1}`,
+      }));
+      return finalize(list, buyer.name.trim(), buyer.email.trim());
+    }
+    // Individual: first ticket pre-filled with buyer info, the rest blank guests
+    setHolders([
+      { ...buyer },
+      ...Array.from({ length: totalQty - 1 }, () => blank("", "")),
+    ]);
+    setStep("details");
+  };
 
   const updateHolder = (i: number, patch: Partial<AttendeeHolder>) => {
     setHolders((prev) => prev.map((h, idx) => (idx === i ? { ...h, ...patch } : h)));
   };
-  const updateGroup = (patch: Partial<AttendeeHolder>) => setGroupHolder((g) => ({ ...g, ...patch }));
 
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  const proceed = async () => {
+  const submitDetails = () => {
     setError("");
-    const list = mode === "group"
-      ? Array.from({ length: totalQty }, (_, i) => ({
-          ...groupHolder,
-          name: `${groupHolder.name.trim()} #${i + 1}`,
-        }))
-      : holders;
-
-    for (let i = 0; i < list.length; i++) {
-      const h = list[i];
-      const label = `Ticket ${i + 1}`;
-      if (!h.name?.trim()) return setError(`${label}: full name is required`);
-      if (h.name.trim().length < 2) return setError(`${label}: name looks too short`);
-      if (!h.email?.trim()) return setError(`${label}: email is required`);
-      if (!EMAIL_RE.test(h.email.trim())) return setError(`${label}: email format is invalid`);
-      if (h.attendee_type === "rotarian" && !h.rotary_club?.trim())
-        return setError(`${label}: Rotary club is required for Rotarians`);
-      if (h.attendee_type === "rotaractor") {
-        if (!h.member_id?.trim() || !h.rotary_club?.trim())
-          return setError(`${label}: please pick your Rotaractor record from the directory (Member ID + club required)`);
-      }
+    for (let i = 0; i < holders.length; i++) {
+      const err = validateHolder(holders[i], `Ticket ${i + 1}`);
+      if (err) return setError(err);
     }
+    finalize(holders);
+  };
 
-    // Build items per tier
+  const finalize = async (
+    list: AttendeeHolder[],
+    buyerName = list[0].name,
+    buyerEmail = list[0].email,
+  ) => {
     let cursor = 0;
     const items = lines.map((l) => {
       const slice = list.slice(cursor, cursor + l.quantity);
       cursor += l.quantity;
       return { tier_id: l.tier_id, holders: slice };
     });
-
     try {
       setSubmitting(true);
-      await onSubmit({
-        items,
-        buyer_name: mode === "group" ? groupHolder.name.trim() : list[0].name,
-        buyer_email: mode === "group" ? groupHolder.email.trim() : list[0].email,
-      });
+      await onSubmit({ items, buyer_name: buyerName, buyer_email: buyerEmail });
     } catch (e: any) {
       setError(e.message || "Failed to continue");
     } finally {
@@ -122,11 +150,22 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><UserCheck className="h-5 w-5 text-primary" />Attendee details</DialogTitle>
           <DialogDescription>
-            Rotaract D9213 requires attendee classification for every ticket. This helps us verify members and welcome guests.
+            Rotaract D9213 requires attendee classification. We'll start with you, then handle the {totalQty > 1 ? "remaining tickets" : "ticket"}.
           </DialogDescription>
         </DialogHeader>
 
-        {step === "mode" && totalQty > 1 && (
+        {step === "buyer" && (
+          <div className="space-y-4">
+            <HolderForm title="Tell us about you" holder={buyer} onChange={(p) => setBuyer((b) => ({ ...b, ...p }))} />
+            {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button onClick={goFromBuyer}>{totalQty > 1 ? "Continue" : "Continue to payment"}</Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === "mode" && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">You're buying {totalQty} tickets. How would you like to name them?</p>
             <RadioGroup value={mode} onValueChange={(v) => setMode(v as NamingMode)} className="space-y-2">
@@ -145,38 +184,31 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
                 </div>
               </Label>
             </RadioGroup>
+            {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button onClick={() => setStep("details")}>Continue</Button>
+              <Button variant="outline" onClick={() => setStep("buyer")} disabled={submitting}>Back</Button>
+              <Button onClick={goFromMode} disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : (mode === "group" ? "Continue to payment" : "Continue")}
+              </Button>
             </DialogFooter>
           </div>
         )}
 
         {step === "details" && (
           <div className="space-y-4">
-            {mode === "group" ? (
+            <p className="text-xs text-muted-foreground">Ticket 1 is set to you. Add the remaining {totalQty - 1} attendee{totalQty - 1 > 1 ? "s" : ""}.</p>
+            {holders.map((h, i) => (
               <HolderForm
-                title="Lead attendee (applied to all tickets)"
-                holder={groupHolder}
-                onChange={updateGroup}
+                key={i}
+                title={`Ticket ${i + 1}${lines.length > 1 ? ` — ${tierNameForIndex(lines, i)}` : ""}${i === 0 ? " (you)" : ""}`}
+                holder={h}
+                onChange={(p) => updateHolder(i, p)}
               />
-            ) : (
-              holders.map((h, i) => (
-                <HolderForm
-                  key={i}
-                  title={`Ticket ${i + 1}${lines.length > 1 ? ` — ${tierNameForIndex(lines, i)}` : ""}`}
-                  holder={h}
-                  onChange={(p) => updateHolder(i, p)}
-                />
-              ))
-            )}
-            {error && (
-              <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>
-            )}
+            ))}
+            {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
             <DialogFooter>
-              {totalQty > 1 && <Button variant="outline" onClick={() => setStep("mode")} disabled={submitting}>Back</Button>}
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
-              <Button onClick={proceed} disabled={submitting}>
+              <Button variant="outline" onClick={() => setStep("mode")} disabled={submitting}>Back</Button>
+              <Button onClick={submitDetails} disabled={submitting}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue to payment"}
               </Button>
             </DialogFooter>
@@ -194,12 +226,12 @@ function tierNameForIndex(lines: TierLine[], i: number) {
 }
 
 function HolderForm({ title, holder, onChange }: { title: string; holder: AttendeeHolder; onChange: (p: Partial<AttendeeHolder>) => void }) {
-  const [lookup, setLookup] = useState("");
+  const [lookup, setLookup] = useState(holder.attendee_type === "rotaractor" ? holder.name : "");
   const [results, setResults] = useState<any[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [touched, setTouched] = useState(false);
 
-  // Debounced Rotaractor lookup
+  // Debounced Rotaractor lookup by full name
   useEffect(() => {
     if (holder.attendee_type !== "rotaractor") { setResults(null); return; }
     const q = lookup.trim();
@@ -225,7 +257,7 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
     setTouched(false);
   };
 
-  const emailValid = !holder.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(holder.email);
+  const emailValid = !holder.email || EMAIL_RE.test(holder.email);
 
   return (
     <div className="border border-border rounded-lg p-4 space-y-3">
@@ -235,7 +267,11 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
         <Label className="text-xs">I am a…</Label>
         <RadioGroup
           value={holder.attendee_type}
-          onValueChange={(v) => { onChange({ attendee_type: v as AttendeeType, rotary_club: "", member_id: "" }); setLookup(""); setResults(null); }}
+          onValueChange={(v) => {
+            onChange({ attendee_type: v as AttendeeType, rotary_club: "", member_id: "" });
+            setLookup("");
+            setResults(null);
+          }}
           className="grid grid-cols-3 gap-2 mt-1"
         >
           {[
@@ -254,44 +290,14 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
         </RadioGroup>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <Label className="text-xs">Full name *</Label>
-          <Input value={holder.name} onChange={(e) => onChange({ name: e.target.value })} placeholder="Jane Doe" />
-        </div>
-        <div>
-          <Label className="text-xs">Email *</Label>
-          <Input
-            type="email"
-            value={holder.email}
-            onChange={(e) => onChange({ email: e.target.value })}
-            placeholder="jane@example.com"
-            aria-invalid={!emailValid}
-            className={!emailValid ? "border-destructive" : ""}
-          />
-          {!emailValid && <p className="text-[10px] text-destructive mt-1">Enter a valid email address</p>}
-        </div>
-      </div>
-
-      {holder.attendee_type === "rotarian" && (
-        <div>
-          <Label className="text-xs">Rotary club *</Label>
-          <Input
-            value={holder.rotary_club || ""}
-            onChange={(e) => onChange({ rotary_club: e.target.value })}
-            placeholder="e.g. Rotary Club of Kampala"
-          />
-        </div>
-      )}
-
-      {holder.attendee_type === "rotaractor" && (
+      {holder.attendee_type === "rotaractor" ? (
         <div className="space-y-2">
-          <Label className="text-xs">Find your record — type your email, name, or Member ID</Label>
+          <Label className="text-xs">Full name * — search the District 9213 directory</Label>
           <div className="relative">
             <Input
               value={lookup}
               onChange={(e) => { setLookup(e.target.value); setTouched(true); }}
-              placeholder="Start typing (min. 2 characters)…"
+              placeholder="Start typing your full name…"
             />
             {searching && <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-2.5 text-muted-foreground" />}
           </div>
@@ -315,21 +321,70 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
           {touched && !searching && results && results.length === 0 && lookup.trim().length >= 2 && (
             <p className="text-xs text-destructive flex items-center gap-1">
               <AlertCircle className="h-3 w-3" />
-              No matching Rotaractor found in District 9213. Double-check spelling or your Member ID.
+              No matching Rotaractor found in District 9213. Double-check your full name spelling.
             </p>
           )}
 
-          {holder.member_id ? (
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Badge variant="secondary">Club: {holder.rotary_club}</Badge>
-              <Badge variant="secondary">Member ID: {holder.member_id}</Badge>
-            </div>
-          ) : (
+          {holder.member_id && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <Label className="text-xs">Email *</Label>
+                  <Input
+                    type="email"
+                    value={holder.email}
+                    onChange={(e) => onChange({ email: e.target.value })}
+                    placeholder="jane@example.com"
+                    aria-invalid={!emailValid}
+                    className={!emailValid ? "border-destructive" : ""}
+                  />
+                  {!emailValid && <p className="text-[10px] text-destructive mt-1">Enter a valid email address</p>}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Badge variant="secondary">Club: {holder.rotary_club}</Badge>
+                <Badge variant="secondary">Member ID: {holder.member_id}</Badge>
+              </div>
+            </>
+          )}
+          {!holder.member_id && (
             <p className="text-[10px] text-muted-foreground">
-              You must select a record from the directory to continue as a Rotaractor.
+              You must select your record from the directory to continue as a Rotaractor.
             </p>
           )}
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Full name *</Label>
+              <Input value={holder.name} onChange={(e) => onChange({ name: e.target.value })} placeholder="Jane Doe" />
+            </div>
+            <div>
+              <Label className="text-xs">Email *</Label>
+              <Input
+                type="email"
+                value={holder.email}
+                onChange={(e) => onChange({ email: e.target.value })}
+                placeholder="jane@example.com"
+                aria-invalid={!emailValid}
+                className={!emailValid ? "border-destructive" : ""}
+              />
+              {!emailValid && <p className="text-[10px] text-destructive mt-1">Enter a valid email address</p>}
+            </div>
+          </div>
+
+          {holder.attendee_type === "rotarian" && (
+            <div>
+              <Label className="text-xs">Rotary club *</Label>
+              <Input
+                value={holder.rotary_club || ""}
+                onChange={(e) => onChange({ rotary_club: e.target.value })}
+                placeholder="e.g. Rotary Club of Kampala"
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
