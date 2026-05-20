@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, UserCheck, Users, AlertCircle } from "lucide-react";
+import { Loader2, UserCheck, Users, AlertCircle, Lock, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AttendeeType = "rotarian" | "rotaractor" | "guest";
@@ -46,6 +46,27 @@ const blank = (buyer = "", email = ""): AttendeeHolder => ({
   name: buyer, email, attendee_type: "guest",
 });
 
+// Single source of truth for "is this holder valid to proceed?"
+function isHolderValid(h: AttendeeHolder): boolean {
+  if (!h.name?.trim() || h.name.trim().length < 2) return false;
+  if (!h.email?.trim() || !EMAIL_RE.test(h.email.trim())) return false;
+  if (h.attendee_type === "rotarian" && !h.rotary_club?.trim()) return false;
+  if (h.attendee_type === "rotaractor" && (!h.member_id?.trim() || !h.rotary_club?.trim())) return false;
+  return true;
+}
+
+function holderError(h: AttendeeHolder, label: string): string | null {
+  if (!h.name?.trim()) return `${label}: full name is required`;
+  if (h.name.trim().length < 2) return `${label}: name looks too short`;
+  if (!h.email?.trim()) return `${label}: email is required`;
+  if (!EMAIL_RE.test(h.email.trim())) return `${label}: email format is invalid`;
+  if (h.attendee_type === "rotarian" && !h.rotary_club?.trim())
+    return `${label}: Rotary club is required for Rotarians`;
+  if (h.attendee_type === "rotaractor" && (!h.member_id?.trim() || !h.rotary_club?.trim()))
+    return `${label}: please select your Rotaractor record from the directory`;
+  return null;
+}
+
 const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyerEmail, lines, onSubmit }: Props) => {
   const totalQty = useMemo(() => lines.reduce((s, l) => s + l.quantity, 0), [lines]);
   const [step, setStep] = useState<Step>("buyer");
@@ -66,43 +87,26 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
     }
   }, [open, defaultBuyerName, defaultBuyerEmail]);
 
-  const validateHolder = (h: AttendeeHolder, label: string): string | null => {
-    if (!h.name?.trim()) return `${label}: full name is required`;
-    if (h.name.trim().length < 2) return `${label}: name looks too short`;
-    if (!h.email?.trim()) return `${label}: email is required`;
-    if (!EMAIL_RE.test(h.email.trim())) return `${label}: email format is invalid`;
-    if (h.attendee_type === "rotarian" && !h.rotary_club?.trim())
-      return `${label}: Rotary club is required for Rotarians`;
-    if (h.attendee_type === "rotaractor") {
-      if (!h.member_id?.trim() || !h.rotary_club?.trim())
-        return `${label}: please pick your Rotaractor record from the directory`;
-    }
-    return null;
-  };
+  const buyerValid = isHolderValid(buyer);
+  const allHoldersValid = holders.length > 0 && holders.every(isHolderValid);
 
   const goFromBuyer = () => {
     setError("");
-    const err = validateHolder(buyer, "Your details");
+    const err = holderError(buyer, "Your details");
     if (err) return setError(err);
-
-    // Single ticket: buyer IS the holder, finish.
     if (totalQty <= 1) return finalize([buyer]);
-
-    // Multi: choose naming mode next
     setStep("mode");
   };
 
   const goFromMode = () => {
     setError("");
     if (mode === "group") {
-      // All tickets named after buyer with #N suffix
       const list = Array.from({ length: totalQty }, (_, i) => ({
         ...buyer,
         name: `${buyer.name.trim()} #${i + 1}`,
       }));
       return finalize(list, buyer.name.trim(), buyer.email.trim());
     }
-    // Individual: first ticket pre-filled with buyer info, the rest blank guests
     setHolders([
       { ...buyer },
       ...Array.from({ length: totalQty - 1 }, () => blank("", "")),
@@ -117,7 +121,7 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
   const submitDetails = () => {
     setError("");
     for (let i = 0; i < holders.length; i++) {
-      const err = validateHolder(holders[i], `Ticket ${i + 1}`);
+      const err = holderError(holders[i], `Ticket ${i + 1}`);
       if (err) return setError(err);
     }
     finalize(holders);
@@ -160,7 +164,9 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
             {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button onClick={goFromBuyer}>{totalQty > 1 ? "Continue" : "Continue to payment"}</Button>
+              <Button onClick={goFromBuyer} disabled={!buyerValid}>
+                {totalQty > 1 ? "Continue" : "Continue to payment"}
+              </Button>
             </DialogFooter>
           </div>
         )}
@@ -206,9 +212,15 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
               />
             ))}
             {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
+            {!allHoldersValid && !error && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Complete every ticket's required fields to continue.
+              </p>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep("mode")} disabled={submitting}>Back</Button>
-              <Button onClick={submitDetails} disabled={submitting}>
+              <Button onClick={submitDetails} disabled={submitting || !allHoldersValid}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue to payment"}
               </Button>
             </DialogFooter>
@@ -231,21 +243,31 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
   const [searching, setSearching] = useState(false);
   const [touched, setTouched] = useState(false);
 
-  // Debounced Rotaractor lookup by full name
+  const locked = holder.attendee_type === "rotaractor" && !!holder.member_id;
+
+  // Debounced Rotaractor lookup by full name (skip while locked)
   useEffect(() => {
-    if (holder.attendee_type !== "rotaractor") { setResults(null); return; }
+    if (holder.attendee_type !== "rotaractor" || locked) { setResults(null); return; }
     const q = lookup.trim();
     if (q.length < 2) { setResults(null); return; }
     setSearching(true);
     const t = setTimeout(async () => {
       const { data, error } = await supabase.rpc("lookup_rotaract_member", { _query: q });
       setSearching(false);
-      if (!error) setResults(data || []);
+      if (error) { setResults([]); return; }
+      const list = data || [];
+      setResults(list);
+      // Auto-pick on a single exact case-insensitive full-name match
+      const exact = list.filter((m: any) => m.full_name?.toLowerCase() === q.toLowerCase());
+      if (exact.length === 1) {
+        pickResultInternal(exact[0]);
+      }
     }, 350);
     return () => { clearTimeout(t); setSearching(false); };
-  }, [lookup, holder.attendee_type]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookup, holder.attendee_type, locked]);
 
-  const pickResult = (m: any) => {
+  const pickResultInternal = (m: any) => {
     onChange({
       name: m.full_name,
       email: m.email || holder.email || "",
@@ -257,7 +279,16 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
     setTouched(false);
   };
 
+  const unlock = () => {
+    onChange({ member_id: "", rotary_club: "" });
+    setLookup(holder.name || "");
+    setResults(null);
+  };
+
   const emailValid = !holder.email || EMAIL_RE.test(holder.email);
+  const exactMultiple =
+    !!results && results.length > 1 &&
+    results.filter((m: any) => m.full_name?.toLowerCase() === lookup.trim().toLowerCase()).length > 1;
 
   return (
     <div className="border border-border rounded-lg p-4 space-y-3">
@@ -295,61 +326,84 @@ function HolderForm({ title, holder, onChange }: { title: string; holder: Attend
           <Label className="text-xs">Full name * — search the District 9213 directory</Label>
           <div className="relative">
             <Input
-              value={lookup}
+              value={locked ? holder.name : lookup}
               onChange={(e) => { setLookup(e.target.value); setTouched(true); }}
-              placeholder="Start typing your full name…"
+              placeholder="Type your full name exactly as registered…"
+              readOnly={locked}
+              className={locked ? "bg-muted/50 cursor-not-allowed pr-10" : ""}
             />
             {searching && <Loader2 className="h-4 w-4 animate-spin absolute right-3 top-2.5 text-muted-foreground" />}
+            {locked && <CheckCircle2 className="h-4 w-4 absolute right-3 top-2.5 text-primary" />}
           </div>
 
-          {results && results.length > 0 && (
-            <div className="border rounded-md divide-y max-h-44 overflow-y-auto">
-              {results.map((m) => (
-                <button
-                  key={m.member_id}
-                  type="button"
-                  onClick={() => pickResult(m)}
-                  className="w-full text-left px-3 py-2 hover:bg-muted/50 text-xs"
-                >
-                  <p className="font-medium text-sm">{m.full_name}</p>
-                  <p className="text-muted-foreground">{m.club_name} · ID {m.member_id}</p>
-                </button>
-              ))}
+          {!locked && results && results.length > 0 && (
+            <div className="space-y-1">
+              {exactMultiple && (
+                <p className="text-[11px] font-medium text-foreground">
+                  Multiple Rotaractors share this name — please pick yours:
+                </p>
+              )}
+              <div className="border rounded-md divide-y max-h-44 overflow-y-auto">
+                {results.map((m) => (
+                  <button
+                    key={m.member_id}
+                    type="button"
+                    onClick={() => pickResultInternal(m)}
+                    className="w-full text-left px-3 py-2 hover:bg-muted/50 text-xs"
+                  >
+                    <p className="font-medium text-sm">{m.full_name}</p>
+                    <p className="text-muted-foreground">{m.club_name} · ID {m.member_id}{m.email ? ` · ${m.email}` : ""}</p>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
-          {touched && !searching && results && results.length === 0 && lookup.trim().length >= 2 && (
+          {!locked && touched && !searching && results && results.length === 0 && lookup.trim().length >= 2 && (
             <p className="text-xs text-destructive flex items-center gap-1">
               <AlertCircle className="h-3 w-3" />
-              No matching Rotaractor found in District 9213. Double-check your full name spelling.
+              No matching Rotaractor found in District 9213. Check the spelling of your full name.
             </p>
           )}
 
-          {holder.member_id && (
+          {locked && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <Label className="text-xs">Email *</Label>
-                  <Input
-                    type="email"
-                    value={holder.email}
-                    onChange={(e) => onChange({ email: e.target.value })}
-                    placeholder="jane@example.com"
-                    aria-invalid={!emailValid}
-                    className={!emailValid ? "border-destructive" : ""}
-                  />
-                  {!emailValid && <p className="text-[10px] text-destructive mt-1">Enter a valid email address</p>}
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs text-primary">
+                  <Lock className="h-3.5 w-3.5" />
+                  Verified from District 9213 directory — locked
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary">Club: {holder.rotary_club}</Badge>
+                  <Badge variant="secondary">Member ID: {holder.member_id}</Badge>
+                </div>
+                <button
+                  type="button"
+                  onClick={unlock}
+                  className="text-[11px] text-primary underline-offset-2 hover:underline"
+                >
+                  Not you? Change selection
+                </button>
               </div>
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Badge variant="secondary">Club: {holder.rotary_club}</Badge>
-                <Badge variant="secondary">Member ID: {holder.member_id}</Badge>
+
+              <div>
+                <Label className="text-xs">Email *</Label>
+                <Input
+                  type="email"
+                  value={holder.email}
+                  onChange={(e) => onChange({ email: e.target.value })}
+                  placeholder="jane@example.com"
+                  aria-invalid={!emailValid}
+                  className={!emailValid ? "border-destructive" : ""}
+                />
+                {!emailValid && <p className="text-[10px] text-destructive mt-1">Enter a valid email address</p>}
               </div>
             </>
           )}
-          {!holder.member_id && (
+
+          {!locked && (
             <p className="text-[10px] text-muted-foreground">
-              You must select your record from the directory to continue as a Rotaractor.
+              You must select your record from the directory before you can continue as a Rotaractor.
             </p>
           )}
         </div>
