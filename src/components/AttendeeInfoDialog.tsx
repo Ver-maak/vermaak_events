@@ -72,7 +72,8 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
   const [step, setStep] = useState<Step>("buyer");
   const [buyer, setBuyer] = useState<AttendeeHolder>(blank(defaultBuyerName, defaultBuyerEmail));
   const [mode, setMode] = useState<NamingMode>("individual");
-  const [holders, setHolders] = useState<AttendeeHolder[]>([]);
+  const [ticketNames, setTicketNames] = useState<string[]>([]);
+  const [contactEmail, setContactEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -83,48 +84,61 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
       setStep("buyer");
       setMode("individual");
       setBuyer(blank(defaultBuyerName, defaultBuyerEmail));
-      setHolders([]);
+      setTicketNames([]);
+      setContactEmail(defaultBuyerEmail || "");
     }
   }, [open, defaultBuyerName, defaultBuyerEmail]);
 
   const buyerValid = isHolderValid(buyer);
-  const allHoldersValid = holders.length > 0 && holders.every(isHolderValid);
+  const namesValid =
+    ticketNames.length === totalQty &&
+    ticketNames.every((n) => n.trim().length >= 2) &&
+    EMAIL_RE.test(contactEmail.trim());
+
+  const buildHolders = (names: string[], email: string): AttendeeHolder[] =>
+    names.map((n) => ({
+      name: n.trim(),
+      email: email.trim(),
+      attendee_type: buyer.attendee_type,
+      rotary_club: buyer.rotary_club,
+      member_id: buyer.member_id,
+    }));
 
   const goFromBuyer = () => {
     setError("");
     const err = holderError(buyer, "Your details");
     if (err) return setError(err);
-    if (totalQty <= 1) return finalize([buyer]);
+    if (!contactEmail) setContactEmail(buyer.email);
+    if (totalQty <= 1) {
+      return finalize(buildHolders([buyer.name], buyer.email), buyer.name, buyer.email);
+    }
     setStep("mode");
   };
 
   const goFromMode = () => {
     setError("");
+    const email = (contactEmail || buyer.email).trim();
     if (mode === "group") {
-      const list = Array.from({ length: totalQty }, (_, i) => ({
-        ...buyer,
-        name: `${buyer.name.trim()} #${i + 1}`,
-      }));
-      return finalize(list, buyer.name.trim(), buyer.email.trim());
+      const names = Array.from({ length: totalQty }, (_, i) => `${buyer.name.trim()} #${i + 1}`);
+      return finalize(buildHolders(names, email), buyer.name.trim(), email);
     }
-    setHolders([
-      { ...buyer },
-      ...Array.from({ length: totalQty - 1 }, () => blank("", "")),
-    ]);
+    setTicketNames([buyer.name.trim(), ...Array.from({ length: totalQty - 1 }, () => "")]);
+    setContactEmail(email);
     setStep("details");
   };
 
-  const updateHolder = (i: number, patch: Partial<AttendeeHolder>) => {
-    setHolders((prev) => prev.map((h, idx) => (idx === i ? { ...h, ...patch } : h)));
+  const updateName = (i: number, v: string) => {
+    setTicketNames((prev) => prev.map((n, idx) => (idx === i ? v : n)));
   };
 
   const submitDetails = () => {
     setError("");
-    for (let i = 0; i < holders.length; i++) {
-      const err = holderError(holders[i], `Ticket ${i + 1}`);
-      if (err) return setError(err);
+    for (let i = 0; i < ticketNames.length; i++) {
+      if (ticketNames[i].trim().length < 2) return setError(`Ticket ${i + 1}: name is required`);
     }
-    finalize(holders);
+    if (!EMAIL_RE.test(contactEmail.trim())) return setError("Enter a valid email address to receive the tickets");
+    const email = contactEmail.trim();
+    finalize(buildHolders(ticketNames, email), buyer.name.trim(), email);
   };
 
   const finalize = async (
