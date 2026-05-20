@@ -72,7 +72,8 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
   const [step, setStep] = useState<Step>("buyer");
   const [buyer, setBuyer] = useState<AttendeeHolder>(blank(defaultBuyerName, defaultBuyerEmail));
   const [mode, setMode] = useState<NamingMode>("individual");
-  const [holders, setHolders] = useState<AttendeeHolder[]>([]);
+  const [ticketNames, setTicketNames] = useState<string[]>([]);
+  const [contactEmail, setContactEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -83,48 +84,61 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
       setStep("buyer");
       setMode("individual");
       setBuyer(blank(defaultBuyerName, defaultBuyerEmail));
-      setHolders([]);
+      setTicketNames([]);
+      setContactEmail(defaultBuyerEmail || "");
     }
   }, [open, defaultBuyerName, defaultBuyerEmail]);
 
   const buyerValid = isHolderValid(buyer);
-  const allHoldersValid = holders.length > 0 && holders.every(isHolderValid);
+  const namesValid =
+    ticketNames.length === totalQty &&
+    ticketNames.every((n) => n.trim().length >= 2) &&
+    EMAIL_RE.test(contactEmail.trim());
+
+  const buildHolders = (names: string[], email: string): AttendeeHolder[] =>
+    names.map((n) => ({
+      name: n.trim(),
+      email: email.trim(),
+      attendee_type: buyer.attendee_type,
+      rotary_club: buyer.rotary_club,
+      member_id: buyer.member_id,
+    }));
 
   const goFromBuyer = () => {
     setError("");
     const err = holderError(buyer, "Your details");
     if (err) return setError(err);
-    if (totalQty <= 1) return finalize([buyer]);
+    if (!contactEmail) setContactEmail(buyer.email);
+    if (totalQty <= 1) {
+      return finalize(buildHolders([buyer.name], buyer.email), buyer.name, buyer.email);
+    }
     setStep("mode");
   };
 
   const goFromMode = () => {
     setError("");
+    const email = (contactEmail || buyer.email).trim();
     if (mode === "group") {
-      const list = Array.from({ length: totalQty }, (_, i) => ({
-        ...buyer,
-        name: `${buyer.name.trim()} #${i + 1}`,
-      }));
-      return finalize(list, buyer.name.trim(), buyer.email.trim());
+      const names = Array.from({ length: totalQty }, (_, i) => `${buyer.name.trim()} #${i + 1}`);
+      return finalize(buildHolders(names, email), buyer.name.trim(), email);
     }
-    setHolders([
-      { ...buyer },
-      ...Array.from({ length: totalQty - 1 }, () => blank("", "")),
-    ]);
+    setTicketNames([buyer.name.trim(), ...Array.from({ length: totalQty - 1 }, () => "")]);
+    setContactEmail(email);
     setStep("details");
   };
 
-  const updateHolder = (i: number, patch: Partial<AttendeeHolder>) => {
-    setHolders((prev) => prev.map((h, idx) => (idx === i ? { ...h, ...patch } : h)));
+  const updateName = (i: number, v: string) => {
+    setTicketNames((prev) => prev.map((n, idx) => (idx === i ? v : n)));
   };
 
   const submitDetails = () => {
     setError("");
-    for (let i = 0; i < holders.length; i++) {
-      const err = holderError(holders[i], `Ticket ${i + 1}`);
-      if (err) return setError(err);
+    for (let i = 0; i < ticketNames.length; i++) {
+      if (ticketNames[i].trim().length < 2) return setError(`Ticket ${i + 1}: name is required`);
     }
-    finalize(holders);
+    if (!EMAIL_RE.test(contactEmail.trim())) return setError("Enter a valid email address to receive the tickets");
+    const email = contactEmail.trim();
+    finalize(buildHolders(ticketNames, email), buyer.name.trim(), email);
   };
 
   const finalize = async (
@@ -202,25 +216,40 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
 
         {step === "details" && (
           <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">Ticket 1 is set to you. Add the remaining {totalQty - 1} attendee{totalQty - 1 > 1 ? "s" : ""}.</p>
-            {holders.map((h, i) => (
-              <HolderForm
-                key={i}
-                title={`Ticket ${i + 1}${lines.length > 1 ? ` — ${tierNameForIndex(lines, i)}` : ""}${i === 0 ? " (you)" : ""}`}
-                holder={h}
-                onChange={(p) => updateHolder(i, p)}
+            <p className="text-xs text-muted-foreground">
+              Enter the name printed on each ticket. Ticket 1 is set to you.
+            </p>
+            <div className="border border-border rounded-lg divide-y">
+              {ticketNames.map((n, i) => (
+                <div key={i} className="p-3 flex items-center gap-3">
+                  <span className="text-xs font-medium text-muted-foreground w-28 shrink-0">
+                    Ticket {i + 1}
+                    {lines.length > 1 ? ` · ${tierNameForIndex(lines, i)}` : ""}
+                  </span>
+                  <Input
+                    value={n}
+                    onChange={(e) => updateName(i, e.target.value)}
+                    placeholder="Ticket holder name"
+                  />
+                </div>
+              ))}
+            </div>
+            <div>
+              <Label className="text-xs">Send ticket{totalQty > 1 ? "s" : ""} to email *</Label>
+              <Input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="you@example.com"
               />
-            ))}
-            {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
-            {!allHoldersValid && !error && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                Complete every ticket's required fields to continue.
+              <p className="text-[11px] text-muted-foreground mt-1">
+                All {totalQty} ticket{totalQty > 1 ? "s" : ""} will be sent to this email.
               </p>
-            )}
+            </div>
+            {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep("mode")} disabled={submitting}>Back</Button>
-              <Button onClick={submitDetails} disabled={submitting || !allHoldersValid}>
+              <Button onClick={submitDetails} disabled={submitting || !namesValid}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue to payment"}
               </Button>
             </DialogFooter>
