@@ -216,25 +216,40 @@ const AttendeeInfoDialog = ({ open, onOpenChange, defaultBuyerName, defaultBuyer
 
         {step === "details" && (
           <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">Ticket 1 is set to you. Add the remaining {totalQty - 1} attendee{totalQty - 1 > 1 ? "s" : ""}.</p>
-            {holders.map((h, i) => (
-              <HolderForm
-                key={i}
-                title={`Ticket ${i + 1}${lines.length > 1 ? ` — ${tierNameForIndex(lines, i)}` : ""}${i === 0 ? " (you)" : ""}`}
-                holder={h}
-                onChange={(p) => updateHolder(i, p)}
+            <p className="text-xs text-muted-foreground">
+              Enter the name printed on each ticket. Ticket 1 is set to you.
+            </p>
+            <div className="border border-border rounded-lg divide-y">
+              {ticketNames.map((n, i) => (
+                <div key={i} className="p-3 flex items-center gap-3">
+                  <span className="text-xs font-medium text-muted-foreground w-28 shrink-0">
+                    Ticket {i + 1}
+                    {lines.length > 1 ? ` · ${tierNameForIndex(lines, i)}` : ""}
+                  </span>
+                  <Input
+                    value={n}
+                    onChange={(e) => updateName(i, e.target.value)}
+                    placeholder="Ticket holder name"
+                  />
+                </div>
+              ))}
+            </div>
+            <div>
+              <Label className="text-xs">Send ticket{totalQty > 1 ? "s" : ""} to email *</Label>
+              <Input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="you@example.com"
               />
-            ))}
-            {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
-            {!allHoldersValid && !error && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                Complete every ticket's required fields to continue.
+              <p className="text-[11px] text-muted-foreground mt-1">
+                All {totalQty} ticket{totalQty > 1 ? "s" : ""} will be sent to this email.
               </p>
-            )}
+            </div>
+            {error && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-4 w-4" />{error}</p>}
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep("mode")} disabled={submitting}>Back</Button>
-              <Button onClick={submitDetails} disabled={submitting || !allHoldersValid}>
+              <Button onClick={submitDetails} disabled={submitting || !namesValid}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue to payment"}
               </Button>
             </DialogFooter>
