@@ -1,4 +1,5 @@
 import { Navigate, Link } from "react-router-dom";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Calendar, Ticket, QrCode, BarChart3, ArrowRight, Sparkles, MapPin, Users } from "lucide-react";
