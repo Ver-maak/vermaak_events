@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -48,12 +49,10 @@ const Auth = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-              <Ticket className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <BrandLogo className="h-10 w-10" />
             <span className="text-2xl font-bold text-white">EnventSuite</span>
           </Link>
-          <p className="text-white/60 text-sm">Events made simple</p>
+          <p className="text-white/60 text-sm">Events made simple — a product of Vermaak</p>
         </div>
 
         <Card className="shadow-elevated">

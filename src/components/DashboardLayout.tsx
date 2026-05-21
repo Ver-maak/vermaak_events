@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
         <div className="flex flex-col h-full">
           <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
             <Link to="/dashboard" className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center"><Ticket className="h-4 w-4 text-primary-foreground" /></div>
+              <BrandLogo className="h-8 w-8" />
               <span className="font-bold text-sidebar-foreground">EnventSuite</span>
             </Link>
             <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-sidebar-foreground"><X className="h-5 w-5" /></button>
