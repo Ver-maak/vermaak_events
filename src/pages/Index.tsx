@@ -34,9 +34,7 @@ const Index = () => {
       <header className="absolute top-0 inset-x-0 z-20">
         <nav className="container mx-auto px-4 py-5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-              <Ticket className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <BrandLogo className="h-9 w-9" />
             <span className="text-xl font-bold text-white">EnventSuite</span>
           </Link>
           <div className="flex items-center gap-2">
@@ -141,8 +139,9 @@ const Index = () => {
 
       <footer className="bg-background border-t border-border py-10">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Ticket className="h-4 w-4" /> © {new Date().getFullYear()} EnventSuite
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <BrandLogo className="h-6 w-6" />
+            <span>© {new Date().getFullYear()} EnventSuite — a product of <span className="font-semibold text-foreground">Vermaak</span></span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link to="/legal/terms" className="hover:text-foreground">Terms</Link>
