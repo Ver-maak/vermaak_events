@@ -81,10 +81,15 @@ const Auth = () => {
                 {loading ? "Loading…" : isLogin ? "Sign in" : "Create account"}<ArrowRight className="h-4 w-4" />
               </Button>
             </form>
-            <div className="mt-4 text-center">
+            <div className="mt-4 flex flex-col items-center gap-2">
               <button onClick={() => setIsLogin(!isLogin)} className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
               </button>
+              {isLogin && (
+                <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Forgot your password?
+                </Link>
+              )}
             </div>
             <p className="mt-6 text-xs text-muted-foreground text-center">
               By continuing you agree to our <Link to="/legal/terms" className="underline">Terms</Link> and <Link to="/legal/privacy" className="underline">Privacy Policy</Link>.
