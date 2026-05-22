@@ -58,9 +58,12 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform lg:translate-x-0 lg:static ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex flex-col h-full">
           <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-            <Link to="/dashboard" className="flex items-center gap-2">
-              <BrandLogo className="h-8 w-8" />
-              <span className="font-bold text-sidebar-foreground">EnventSuite</span>
+            <Link to="/dashboard" className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-2">
+                <BrandLogo className="h-8 w-8" />
+                <span className="font-bold text-sidebar-foreground">EventSuite</span>
+              </div>
+              <span className="text-[10px] text-sidebar-foreground/50 pl-10 -mt-0.5">by Vermaak</span>
             </Link>
             <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-sidebar-foreground"><X className="h-5 w-5" /></button>
           </div>

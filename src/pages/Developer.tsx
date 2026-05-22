@@ -239,7 +239,7 @@ const Developer = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Add webhook endpoint</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1.5"><Label>Endpoint URL</Label><Input value={hookUrl} onChange={(e) => setHookUrl(e.target.value)} placeholder="https://api.yourapp.com/webhooks/enventsuite" /></div>
+            <div className="space-y-1.5"><Label>Endpoint URL</Label><Input value={hookUrl} onChange={(e) => setHookUrl(e.target.value)} placeholder="https://api.yourapp.com/webhooks/eventsuite" /></div>
             <div className="space-y-1.5"><Label>Description (optional)</Label><Input value={hookDesc} onChange={(e) => setHookDesc(e.target.value)} placeholder="Production CRM sync" /></div>
             <div className="space-y-2">
               <Label>Events to subscribe</Label>
@@ -263,7 +263,7 @@ const Developer = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Webhook secret</DialogTitle>
-            <DialogDescription>Use this secret to verify the <code>X-EnventSuite-Signature</code> header (HMAC-SHA256 of the raw body).</DialogDescription>
+            <DialogDescription>Use this secret to verify the <code>X-EnventSuite-Signature</code> header (HMAC-SHA256 of the raw body). Note: the header keeps its legacy <code>EnventSuite</code> prefix for backward compatibility with existing integrations.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">URL</p>
