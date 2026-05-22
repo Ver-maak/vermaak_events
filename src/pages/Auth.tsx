@@ -22,25 +22,33 @@ const Auth = () => {
     setLoading(true);
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
         if (error) throw error;
         navigate("/dashboard");
       } else {
         const { data, error } = await supabase.auth.signUp({
-          email, password,
+          email: email.trim().toLowerCase(), password,
           options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        // Default role: attendee (best-effort, ignore failures)
         if (data.user) {
           await supabase.from("user_roles").insert({ user_id: data.user.id, role: "attendee" as any });
         }
-        toast({ title: "Welcome to EnventSuite!", description: "Your account is ready." });
+        toast({ title: "Welcome to EventSuite!", description: "Your account is ready." });
         if (data.session) navigate("/dashboard");
         else setIsLogin(true);
       }
     } catch (err: any) {
-      toast({ title: "Authentication error", description: err.message, variant: "destructive" });
+      const msg = (err?.message || "").toLowerCase();
+      let friendly = err?.message || "Something went wrong.";
+      if (msg.includes("invalid login credentials")) {
+        friendly = "Email or password is incorrect. Double-check your password (it's case-sensitive) or use \"Forgot your password?\" to reset it.";
+      } else if (msg.includes("email not confirmed")) {
+        friendly = "Please confirm your email address using the link we sent you, then sign in again.";
+      } else if (msg.includes("rate")) {
+        friendly = "Too many attempts — please wait a moment and try again.";
+      }
+      toast({ title: "Sign-in failed", description: friendly, variant: "destructive" });
     } finally { setLoading(false); }
   };
 
@@ -50,9 +58,9 @@ const Auth = () => {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
             <BrandLogo className="h-10 w-10" />
-            <span className="text-2xl font-bold text-white">EnventSuite</span>
+            <span className="text-2xl font-bold text-white">EventSuite</span>
           </Link>
-          <p className="text-white/60 text-sm">Events made simple — a product of Vermaak</p>
+          <p className="text-white/70 text-sm">Events made simple — a product of Vermaak</p>
         </div>
 
         <Card className="shadow-elevated">

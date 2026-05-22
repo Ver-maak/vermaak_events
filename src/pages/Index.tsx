@@ -36,11 +36,12 @@ const Index = () => {
         <nav className="container mx-auto px-4 py-5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <BrandLogo className="h-9 w-9" />
-            <span className="text-xl font-bold text-white">EnventSuite</span>
+            <span className="text-xl font-bold text-white">EventSuite</span>
+            <span className="hidden sm:inline text-xs text-white/60 font-medium ml-1">by Vermaak</span>
           </Link>
           <div className="flex items-center gap-2">
             <Link to="/events"><Button variant="ghost" className="text-white hover:bg-white/10 hover:text-white">Browse events</Button></Link>
-            <Link to="/auth"><Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">Sign in</Button></Link>
+            <Link to="/auth"><Button variant="outline" className="border-white/30 text-white hover:bg-white/10 bg-transparent">Sign in</Button></Link>
           </div>
         </nav>
       </header>
@@ -60,9 +61,9 @@ const Index = () => {
             <h1 className="text-5xl md:text-7xl font-bold text-white leading-[1.05] mb-6 text-balance">
               Run unforgettable<br /> <span className="bg-gradient-to-r from-primary-glow to-accent bg-clip-text text-transparent">events.</span>
             </h1>
-            <p className="text-lg md:text-xl text-white/70 mb-10 max-w-2xl">
+            <p className="text-lg md:text-xl text-white/80 mb-10 max-w-2xl">
               Create events, sell tickets, check guests in with QR — and grow with real‑time analytics.
-              EnventSuite gives you everything you need, in one place.
+              EventSuite gives you everything you need, in one place.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link to="/auth"><Button size="lg" className="gap-2 w-full sm:w-auto h-12 px-6 text-base">Start for free <ArrowRight className="h-4 w-4" /></Button></Link>
@@ -142,7 +143,7 @@ const Index = () => {
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <BrandLogo className="h-6 w-6" />
-            <span>© {new Date().getFullYear()} EnventSuite — a product of <span className="font-semibold text-foreground">Vermaak</span></span>
+            <span>© {new Date().getFullYear()} EventSuite — a product of <span className="font-semibold text-foreground">Vermaak</span></span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link to="/legal/terms" className="hover:text-foreground">Terms</Link>

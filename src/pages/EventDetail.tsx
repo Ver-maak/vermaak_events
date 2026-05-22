@@ -254,7 +254,7 @@ const EventDetail = () => {
                       </div>
                       {total > 0 && (
                         <p className="text-[10px] text-muted-foreground pt-1">
-                          Fee determined by EnventSuite's tenant fee schedule. This is the exact amount charged to your mobile money wallet.
+                          Fee determined by EventSuite's tenant fee schedule. This is the exact amount charged to your mobile money wallet.
                         </p>
                       )}
                     </div>

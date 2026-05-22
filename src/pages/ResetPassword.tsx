@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Ticket, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const ResetPassword = () => {
   const [ready, setReady] = useState(false);
@@ -55,11 +56,10 @@ const ResetPassword = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
-              <Ticket className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-white">EnventSuite</span>
+            <BrandLogo className="h-10 w-10" />
+            <span className="text-2xl font-bold text-white">EventSuite</span>
           </Link>
+          <p className="text-white/70 text-sm">a product of Vermaak</p>
         </div>
         <Card className="shadow-elevated">
           <CardHeader>

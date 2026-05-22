@@ -4,7 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Search, Ticket } from "lucide-react";
+import { Calendar, MapPin, Search } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { formatDateTime } from "@/lib/format";
 import EmptyState from "@/components/EmptyState";
 import { useAuth } from "@/lib/auth";
@@ -33,8 +34,9 @@ const Browse = () => {
       <header className="border-b border-border bg-card sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center"><Ticket className="h-4 w-4 text-primary-foreground" /></div>
-            <span className="font-bold">EnventSuite</span>
+            <BrandLogo className="h-8 w-8" />
+            <span className="font-bold">EventSuite</span>
+            <span className="hidden sm:inline text-[11px] text-muted-foreground ml-1">by Vermaak</span>
           </Link>
           <div className="flex items-center gap-2">
             {session ? <Link to="/dashboard"><Button variant="outline" size="sm">Dashboard</Button></Link>
