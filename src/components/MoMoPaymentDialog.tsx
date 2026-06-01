@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CheckCircle2, Loader2, Smartphone, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, Smartphone, XCircle, RefreshCw, AlertCircle } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import FeeBreakdown from "@/components/FeeBreakdown";
+import { explainPaymentError, type FriendlyFailure } from "@/lib/paymentErrors";
 
 export type MoMoProvider = "mtn_momo" | "airtel_money";
 
@@ -26,20 +27,25 @@ interface Props {
   defaultPhone?: string;
   feeQuote?: FeeQuote | null;
   organizationId?: string;
+  /** Returns when the payment is fully confirmed (success). Throws with a message on failure. */
   onConfirm: (result: { method: MoMoProvider; phone: string; reference: string }) => Promise<void>;
+  /** Optional manual reconciliation — called when the buyer taps "Check status". */
+  onManualVerify?: () => Promise<"success" | "failed" | "cancelled" | "pending">;
 }
 
 type Stage = "form" | "prompt" | "waiting" | "success" | "failed";
 
-const WAIT_TIMEOUT_MS = 120_000; // give Swarmbyte STK push up to 2 minutes
+const WAIT_TIMEOUT_MS = 120_000;
 
-// Fallback fee (used only if no tenant fee quote is supplied).
 const fallbackFee = (subtotal: number) => {
   if (subtotal <= 0) return 0;
   return Math.round(Math.min(5000, Math.max(500, subtotal * 0.03)));
 };
 
-const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone, feeQuote, organizationId, onConfirm }: Props) => {
+const MoMoPaymentDialog = ({
+  open, onOpenChange, amount, currency, defaultPhone, feeQuote, organizationId,
+  onConfirm, onManualVerify,
+}: Props) => {
   const processingFee = feeQuote ? feeQuote.fee : fallbackFee(amount);
   const grandTotal = feeQuote ? feeQuote.grandTotal : amount + processingFee;
   const tierLabel = feeQuote?.tierLabel;
@@ -47,6 +53,8 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
   const [phone, setPhone] = useState(defaultPhone || "");
   const [stage, setStage] = useState<Stage>("form");
   const [countdown, setCountdown] = useState(WAIT_TIMEOUT_MS / 1000);
+  const [failure, setFailure] = useState<FriendlyFailure | null>(null);
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState("");
   const cancelledRef = useRef(false);
   const timerRef = useRef<number | null>(null);
@@ -55,6 +63,7 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
     if (open) {
       setStage("form");
       setError("");
+      setFailure(null);
       cancelledRef.current = false;
     }
     return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
@@ -66,14 +75,12 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
   const runFlow = async () => {
     if (!validPhone) { setError("Enter a valid phone number"); return; }
     setError("");
+    setFailure(null);
     cancelledRef.current = false;
 
-    // Stage 1: dispatching prompt + initiating payment (sends STK push)
     setStage("prompt");
     const ref = "REF-" + Date.now().toString(36).toUpperCase();
 
-    // Stage 2: waiting for buyer to enter PIN; onConfirm initiates Swarmbyte
-    // collect and polls payment_intents.status. The countdown is a UI timeout.
     setStage("waiting");
     setCountdown(WAIT_TIMEOUT_MS / 1000);
     const start = Date.now();
@@ -81,19 +88,17 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
     timerRef.current = window.setInterval(() => {
       const remaining = Math.max(0, WAIT_TIMEOUT_MS - (Date.now() - start));
       setCountdown(Math.ceil(remaining / 1000));
-      if (remaining <= 0) {
-        if (timerRef.current) window.clearInterval(timerRef.current);
-      }
+      if (remaining <= 0 && timerRef.current) window.clearInterval(timerRef.current);
     }, 1000) as unknown as number;
 
     try {
       await onConfirm({ method: provider, phone, reference: ref });
       if (cancelledRef.current) return;
       setStage("success");
-      setTimeout(() => onOpenChange(false), 1200);
+      setTimeout(() => onOpenChange(false), 1500);
     } catch (e: any) {
       if (cancelledRef.current) return;
-      setError(e.message || "Payment failed");
+      setFailure(explainPaymentError(e));
       setStage("failed");
     } finally {
       if (timerRef.current) window.clearInterval(timerRef.current);
@@ -103,12 +108,39 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
   const cancel = () => {
     cancelledRef.current = true;
     if (timerRef.current) window.clearInterval(timerRef.current);
-    setError("Payment cancelled");
+    setFailure(explainPaymentError("Payment cancelled by user"));
     setStage("failed");
   };
 
+  const checkStatus = async () => {
+    if (!onManualVerify) return;
+    setVerifying(true);
+    try {
+      const status = await onManualVerify();
+      if (status === "success") {
+        setStage("success");
+        setTimeout(() => onOpenChange(false), 1500);
+      } else if (status === "pending") {
+        setFailure({
+          kind: "timeout",
+          title: "Still pending",
+          description: "Swarmbyte hasn't confirmed yet. Approve the prompt on your phone, then check again.",
+          retryable: true,
+        });
+      } else {
+        setFailure(explainPaymentError(`Payment ${status}`));
+      }
+    } catch (e: any) {
+      setFailure(explainPaymentError(e));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const locked = stage === "prompt" || stage === "waiting" || verifying;
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (stage !== "prompt" && stage !== "waiting") onOpenChange(o); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!locked) onOpenChange(o); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" />Mobile Money Payment</DialogTitle>
@@ -133,10 +165,10 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
               <div className="flex justify-between">
                 <span className="font-semibold">Total to pay</span>
                 <span className="font-bold text-primary">{formatMoney(grandTotal, currency)}</span>
-            </div>
-            <div data-testid="fee-breakdown-confirm">
-              <FeeBreakdown amount={amount} currency={currency} organizationId={organizationId} />
-            </div>
+              </div>
+              <div data-testid="fee-breakdown-confirm">
+                <FeeBreakdown amount={amount} currency={currency} organizationId={organizationId} />
+              </div>
               <p className="text-[10px] text-muted-foreground pt-1">This is the exact amount that will be deducted from your mobile money wallet.</p>
             </div>
             <div className="space-y-2">
@@ -193,14 +225,37 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
           </div>
         )}
 
-        {stage === "failed" && (
+        {stage === "failed" && failure && (
           <div className="space-y-4">
-            <div className="py-4 text-center space-y-2">
-              <XCircle className="h-10 w-10 text-destructive mx-auto" />
-              <p className="font-medium">Payment failed</p>
-              <p className="text-sm text-muted-foreground">{error || "Please try again."}</p>
+            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-2">
+              <div className="flex items-start gap-2">
+                {failure.kind === "timeout" ? (
+                  <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                )}
+                <div className="space-y-1">
+                  <p className="font-medium text-sm">{failure.title}</p>
+                  <p className="text-xs text-muted-foreground">{failure.description}</p>
+                </div>
+              </div>
             </div>
-            <Button className="w-full" variant="outline" onClick={() => setStage("form")}>Try again</Button>
+
+            {onManualVerify && failure.kind !== "duplicate" && (
+              <Button variant="outline" className="w-full gap-2" disabled={verifying} onClick={checkStatus}>
+                <RefreshCw className={`h-4 w-4 ${verifying ? "animate-spin" : ""}`} />
+                {verifying ? "Checking with Swarmbyte…" : "Check status now"}
+              </Button>
+            )}
+
+            {failure.retryable ? (
+              <Button className="w-full" onClick={() => setStage("form")}>Try again</Button>
+            ) : (
+              <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>Close</Button>
+            )}
+            <p className="text-[10px] text-muted-foreground text-center">
+              Charged but no tickets? Use "Check status" — it reconciles directly with the provider.
+            </p>
           </div>
         )}
       </DialogContent>
@@ -208,7 +263,4 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
   );
 };
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 export default MoMoPaymentDialog;
-
