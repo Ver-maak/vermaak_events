@@ -27,10 +27,9 @@ interface FormState {
   callback_url: string;
   redirect_success_url: string;
   redirect_cancel_url: string;
-  public_key: string;
-  secret_key: string;
-  merchant_id: string;
-  webhook_secret: string;
+  api_key: string;
+  api_secret: string;
+  wallet_address: string;
   preview: Record<string, string>;
 }
 
@@ -38,14 +37,13 @@ const empty: FormState = {
   name: "Swarmbyte Payments",
   enabled: false,
   mode: "sandbox",
-  base_url: "",
+  base_url: "https://core.swarmbyte.com",
   callback_url: "",
   redirect_success_url: "",
   redirect_cancel_url: "",
-  public_key: "",
-  secret_key: "",
-  merchant_id: "",
-  webhook_secret: "",
+  api_key: "",
+  api_secret: "",
+  wallet_address: "",
   preview: {},
 };
 
