@@ -534,6 +534,96 @@ export type Database = {
           },
         ]
       }
+      payment_logs: {
+        Row: {
+          created_at: string
+          direction: string
+          endpoint: string | null
+          id: string
+          intent_id: string | null
+          order_id: string | null
+          provider_code: string
+          request: Json | null
+          response: Json | null
+          status_code: number | null
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          endpoint?: string | null
+          id?: string
+          intent_id?: string | null
+          order_id?: string | null
+          provider_code: string
+          request?: Json | null
+          response?: Json | null
+          status_code?: number | null
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          endpoint?: string | null
+          id?: string
+          intent_id?: string | null
+          order_id?: string | null
+          provider_code?: string
+          request?: Json | null
+          response?: Json | null
+          status_code?: number | null
+        }
+        Relationships: []
+      }
+      payment_providers: {
+        Row: {
+          base_url: string | null
+          callback_url: string | null
+          code: string
+          created_at: string
+          credentials_encrypted: string | null
+          credentials_preview: Json
+          enabled: boolean
+          id: string
+          mode: string
+          name: string
+          redirect_cancel_url: string | null
+          redirect_success_url: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          base_url?: string | null
+          callback_url?: string | null
+          code: string
+          created_at?: string
+          credentials_encrypted?: string | null
+          credentials_preview?: Json
+          enabled?: boolean
+          id?: string
+          mode?: string
+          name: string
+          redirect_cancel_url?: string | null
+          redirect_success_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          base_url?: string | null
+          callback_url?: string | null
+          code?: string
+          created_at?: string
+          credentials_encrypted?: string | null
+          credentials_preview?: Json
+          enabled?: boolean
+          id?: string
+          mode?: string
+          name?: string
+          redirect_cancel_url?: string | null
+          redirect_success_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1012,6 +1102,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_payment_provider_decrypted: {
+        Args: { _code: string; _enc_key: string }
+        Returns: Json
+      }
       get_user_org: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1050,6 +1144,22 @@ export type Database = {
           _currency: Database["public"]["Enums"]["currency_code"]
         }
         Returns: number
+      }
+      save_payment_provider: {
+        Args: {
+          _base_url: string
+          _callback_url: string
+          _code: string
+          _credentials: Json
+          _enabled: boolean
+          _enc_key: string
+          _mode: string
+          _name: string
+          _preview: Json
+          _redirect_cancel_url: string
+          _redirect_success_url: string
+        }
+        Returns: string
       }
       transfer_funds: {
         Args: {

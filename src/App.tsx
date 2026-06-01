@@ -23,6 +23,7 @@ import TeamUsers from "./pages/TeamUsers";
 import DashboardSettings from "./pages/DashboardSettings";
 import FeeManagement from "./pages/FeeManagement";
 import Tenants from "./pages/admin/Tenants";
+import PaymentSettings from "./pages/admin/PaymentSettings";
 import Developer from "./pages/Developer";
 import ChangePassword from "./pages/ChangePassword";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -74,6 +75,7 @@ const App = () => (
             <Route path="/dashboard/team" element={<ProtectedRoute><TeamUsers /></ProtectedRoute>} />
             <Route path="/dashboard/fees" element={<ProtectedRoute><FeeManagement /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/payments" element={<ProtectedRoute><PaymentSettings /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

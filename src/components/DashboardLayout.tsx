@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Users, Building2, Settings, LogOut, Menu, X, Shield,
-  ChevronDown, Calendar, Ticket, QrCode, BarChart3, Wallet, ArrowLeftRight, Percent, Compass, Activity, Code2
+  ChevronDown, Calendar, Ticket, QrCode, BarChart3, Wallet, ArrowLeftRight, Percent, Compass, Activity, Code2, CreditCard
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -41,6 +41,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
       { label: "Wallets", href: "/dashboard/wallets", icon: <Wallet className="h-4 w-4" />, section: "Admin" },
       { label: "Transactions", href: "/dashboard/transactions", icon: <ArrowLeftRight className="h-4 w-4" />, section: "Admin" },
       { label: "Fee engine", href: "/dashboard/fees", icon: <Percent className="h-4 w-4" />, section: "Admin" },
+      { label: "Payment settings", href: "/dashboard/payments", icon: <CreditCard className="h-4 w-4" />, section: "Admin" },
     ] : []),
 
     { label: "Settings", href: "/dashboard/settings", icon: <Settings className="h-4 w-4" />, section: "Account" },
