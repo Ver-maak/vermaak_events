@@ -119,7 +119,7 @@ export default function PaymentSettings() {
       });
       if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
       toast({ title: "Saved", description: "Payment provider updated." });
-      setForm((f) => ({ ...f, public_key: "", secret_key: "", merchant_id: "", webhook_secret: "", preview }));
+      setForm((f) => ({ ...f, api_key: "", api_secret: "", wallet_address: "", preview }));
     } catch (e: any) {
       toast({ title: "Save failed", description: e.message, variant: "destructive" });
     } finally {
@@ -201,11 +201,14 @@ export default function PaymentSettings() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <SecretField label="Public key" preview={form.preview.public_key} value={form.public_key} onChange={(v) => setForm({ ...form, public_key: v })} />
-                <SecretField label="Secret key" preview={form.preview.secret_key} value={form.secret_key} onChange={(v) => setForm({ ...form, secret_key: v })} />
-                <SecretField label="Merchant / Wallet ID" preview={form.preview.merchant_id} value={form.merchant_id} onChange={(v) => setForm({ ...form, merchant_id: v })} />
-                <SecretField label="Webhook secret" preview={form.preview.webhook_secret} value={form.webhook_secret} onChange={(v) => setForm({ ...form, webhook_secret: v })} />
+                <SecretField label="API key (client_id)" preview={form.preview.api_key} value={form.api_key} onChange={(v) => setForm({ ...form, api_key: v })} />
+                <SecretField label="API secret (client_secret)" preview={form.preview.api_secret} value={form.api_secret} onChange={(v) => setForm({ ...form, api_secret: v })} />
+                <SecretField label="Wallet address" preview={form.preview.wallet_address} value={form.wallet_address} onChange={(v) => setForm({ ...form, wallet_address: v })} />
               </div>
+              <p className="text-xs text-muted-foreground">
+                Note: Swarmbyte webhooks are unsigned (per their docs). Security relies on HTTPS,
+                the unguessable Supabase function URL, and idempotent processing by transactionId.
+              </p>
 
               <div className="space-y-1.5 pt-2">
                 <Label>Webhook URL (configure this in Swarmbyte dashboard)</Label>
