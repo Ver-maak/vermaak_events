@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
 import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
 import AttendeeInfoDialog, { type AttendeeHolder } from "@/components/AttendeeInfoDialog";
+import { getFunctionErrorMessage } from "@/lib/paymentErrors";
 
 const EventDetail = () => {
   const { slug } = useParams();
@@ -156,7 +157,7 @@ const EventDetail = () => {
     const { data: init, error: initErr } = await supabase.functions.invoke("payments-initiate", {
       body: { order_id: pendingOrderId, provider_code: "swarmbyte", phone },
     });
-    if (initErr || init?.error) throw new Error(init?.error || initErr?.message || "Failed to initiate");
+    if (initErr || init?.error) throw new Error(init?.error || await getFunctionErrorMessage(initErr, "Failed to initiate payment"));
 
     // Stub fallback: provider not configured — mark order paid directly so the
     // buyer still gets their ticket in preview/dev environments.
@@ -208,7 +209,7 @@ const EventDetail = () => {
     const { data, error } = await supabase.functions.invoke("payments-verify", {
       body: { intent_id: pendingIntentId },
     });
-    if (error || data?.error) throw new Error(data?.error || error?.message || "Verification failed");
+    if (error || data?.error) throw new Error(data?.error || await getFunctionErrorMessage(error, "Verification failed"));
     const status = (data?.status as "success" | "failed" | "cancelled" | "pending") || "pending";
     if (status === "success") {
       setTimeout(() => navigate(`/dashboard/orders/${pendingOrderId}`), 600);
