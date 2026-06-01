@@ -24,14 +24,16 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setLoginError(null);
+    const normalizedEmail = email.trim().toLowerCase();
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+        const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (error) throw error;
         navigate("/dashboard");
       } else {
         const { data, error } = await supabase.auth.signUp({
-          email: email.trim().toLowerCase(), password,
+          email: normalizedEmail, password,
           options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
@@ -44,15 +46,23 @@ const Auth = () => {
       }
     } catch (err: any) {
       const msg = (err?.message || "").toLowerCase();
+      let kind: LoginError["kind"] = "other";
       let friendly = err?.message || "Something went wrong.";
       if (msg.includes("invalid login credentials")) {
-        friendly = "Email or password is incorrect. Double-check your password (it's case-sensitive) or use \"Forgot your password?\" to reset it.";
+        kind = "invalid_credentials";
+        friendly = "We couldn't sign you in with that email and password.";
       } else if (msg.includes("email not confirmed")) {
+        kind = "unconfirmed";
         friendly = "Please confirm your email address using the link we sent you, then sign in again.";
       } else if (msg.includes("rate")) {
+        kind = "rate";
         friendly = "Too many attempts — please wait a moment and try again.";
       }
-      toast({ title: "Sign-in failed", description: friendly, variant: "destructive" });
+      if (isLogin) {
+        setLoginError({ kind, email: normalizedEmail, message: friendly });
+      } else {
+        toast({ title: "Sign-up failed", description: friendly, variant: "destructive" });
+      }
     } finally { setLoading(false); }
   };
 
