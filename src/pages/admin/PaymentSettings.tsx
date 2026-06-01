@@ -81,7 +81,7 @@ export default function PaymentSettings() {
           callback_url: data.callback_url || "",
           redirect_success_url: data.redirect_success_url || "",
           redirect_cancel_url: data.redirect_cancel_url || "",
-          public_key: "", secret_key: "", merchant_id: "", webhook_secret: "",
+          api_key: "", api_secret: "", wallet_address: "",
           preview: p,
         });
       } else {
