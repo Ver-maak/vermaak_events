@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { CreditCard, Loader2, ShieldCheck } from "lucide-react";
+import { getFunctionErrorMessage } from "@/lib/paymentErrors";
 
 const PROVIDERS = [
   { code: "swarmbyte", name: "Swarmbyte Payments" },
@@ -117,7 +118,7 @@ export default function PaymentSettings() {
           preview,
         },
       });
-      if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
+      if (error || (data as any)?.error) throw new Error((data as any)?.error || await getFunctionErrorMessage(error, "Could not save payment settings"));
       toast({ title: "Saved", description: "Payment provider updated." });
       setForm((f) => ({ ...f, api_key: "", api_secret: "", wallet_address: "", preview }));
     } catch (e: any) {
@@ -131,7 +132,7 @@ export default function PaymentSettings() {
     setTesting(true);
     try {
       const { data, error } = await supabase.functions.invoke("payments-test-connection", { body: { code } });
-      if (error) throw error;
+      if (error) throw new Error(await getFunctionErrorMessage(error, "Could not test payment connection"));
       toast({
         title: data?.ok ? "Connection OK" : "Connection failed",
         description: data?.message || "",
