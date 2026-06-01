@@ -21,9 +21,9 @@ Deno.serve(async (req) => {
     const cfg = await loadProviderConfig(code);
     const provider = getProvider(code);
     const result = await provider.testConnection(cfg);
-    return json(result, result.ok ? 200 : 400);
+    return json(result);
   } catch (e) {
-    return json({ ok: false, message: (e as Error).message }, 500);
+    return json({ ok: false, message: (e as Error).message });
   }
 });
 
