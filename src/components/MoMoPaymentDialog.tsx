@@ -31,7 +31,7 @@ interface Props {
 
 type Stage = "form" | "prompt" | "waiting" | "success" | "failed";
 
-const AUTO_APPROVE_MS = 5000; // simulated "user enters PIN" delay
+const WAIT_TIMEOUT_MS = 120_000; // give Swarmbyte STK push up to 2 minutes
 
 // Fallback fee (used only if no tenant fee quote is supplied).
 const fallbackFee = (subtotal: number) => {
@@ -46,7 +46,7 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
   const [provider, setProvider] = useState<MoMoProvider>("mtn_momo");
   const [phone, setPhone] = useState(defaultPhone || "");
   const [stage, setStage] = useState<Stage>("form");
-  const [countdown, setCountdown] = useState(AUTO_APPROVE_MS / 1000);
+  const [countdown, setCountdown] = useState(WAIT_TIMEOUT_MS / 1000);
   const [error, setError] = useState("");
   const cancelledRef = useRef(false);
   const timerRef = useRef<number | null>(null);
@@ -68,43 +68,42 @@ const MoMoPaymentDialog = ({ open, onOpenChange, amount, currency, defaultPhone,
     setError("");
     cancelledRef.current = false;
 
-    // Stage 1: dispatching prompt
+    // Stage 1: dispatching prompt + initiating payment (sends STK push)
     setStage("prompt");
-    await sleep(1200);
-    if (cancelledRef.current) return;
+    const ref = "REF-" + Date.now().toString(36).toUpperCase();
 
-    // Stage 2: waiting for PIN, with countdown
+    // Stage 2: waiting for buyer to enter PIN; onConfirm initiates Swarmbyte
+    // collect and polls payment_intents.status. The countdown is a UI timeout.
     setStage("waiting");
-    setCountdown(AUTO_APPROVE_MS / 1000);
+    setCountdown(WAIT_TIMEOUT_MS / 1000);
     const start = Date.now();
-    await new Promise<void>((resolve) => {
-      timerRef.current = window.setInterval(() => {
-        const remaining = Math.max(0, AUTO_APPROVE_MS - (Date.now() - start));
-        setCountdown(Math.ceil(remaining / 1000));
-        if (remaining <= 0 || cancelledRef.current) {
-          if (timerRef.current) window.clearInterval(timerRef.current);
-          resolve();
-        }
-      }, 200) as unknown as number;
-    });
-    if (cancelledRef.current) return;
+    if (timerRef.current) window.clearInterval(timerRef.current);
+    timerRef.current = window.setInterval(() => {
+      const remaining = Math.max(0, WAIT_TIMEOUT_MS - (Date.now() - start));
+      setCountdown(Math.ceil(remaining / 1000));
+      if (remaining <= 0) {
+        if (timerRef.current) window.clearInterval(timerRef.current);
+      }
+    }, 1000) as unknown as number;
 
-    // Stage 3: confirm via backend (creates intent + triggers signed webhook)
     try {
-      const ref = (provider === "mtn_momo" ? "MTN-" : "AIR-") + Date.now().toString(36).toUpperCase();
       await onConfirm({ method: provider, phone, reference: ref });
+      if (cancelledRef.current) return;
       setStage("success");
       setTimeout(() => onOpenChange(false), 1200);
     } catch (e: any) {
+      if (cancelledRef.current) return;
       setError(e.message || "Payment failed");
       setStage("failed");
+    } finally {
+      if (timerRef.current) window.clearInterval(timerRef.current);
     }
   };
 
   const cancel = () => {
     cancelledRef.current = true;
     if (timerRef.current) window.clearInterval(timerRef.current);
-    setError("Payment cancelled on phone");
+    setError("Payment cancelled");
     setStage("failed");
   };
 
