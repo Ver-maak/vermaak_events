@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
-import { Ticket, ArrowRight } from "lucide-react";
+import { Ticket, ArrowRight, AlertCircle } from "lucide-react";
+
+type LoginError = { kind: "invalid_credentials" | "unconfirmed" | "rate" | "other"; email: string; message: string };
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,6 +18,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<LoginError | null>(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
