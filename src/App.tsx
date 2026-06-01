@@ -18,11 +18,9 @@ import Analytics from "./pages/organizer/Analytics";
 import Legal from "./pages/Legal";
 import Wallets from "./pages/Wallets";
 import Transactions from "./pages/Transactions";
-import Organizations from "./pages/Organizations";
 import TeamUsers from "./pages/TeamUsers";
 import DashboardSettings from "./pages/DashboardSettings";
 import FeeManagement from "./pages/FeeManagement";
-import Tenants from "./pages/admin/Tenants";
 import PaymentSettings from "./pages/admin/PaymentSettings";
 import Developer from "./pages/Developer";
 import ChangePassword from "./pages/ChangePassword";
@@ -69,8 +67,6 @@ const App = () => (
 
             <Route path="/dashboard/wallets" element={<ProtectedRoute><Wallets /></ProtectedRoute>} />
             <Route path="/dashboard/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
-            <Route path="/dashboard/organizations" element={<ProtectedRoute><Organizations /></ProtectedRoute>} />
-            <Route path="/dashboard/tenants" element={<ProtectedRoute><Tenants /></ProtectedRoute>} />
             <Route path="/dashboard/users" element={<ProtectedRoute><TeamUsers /></ProtectedRoute>} />
             <Route path="/dashboard/team" element={<ProtectedRoute><TeamUsers /></ProtectedRoute>} />
             <Route path="/dashboard/fees" element={<ProtectedRoute><FeeManagement /></ProtectedRoute>} />
