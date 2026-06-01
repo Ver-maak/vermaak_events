@@ -158,6 +158,19 @@ const EventDetail = () => {
     });
     if (initErr || init?.error) throw new Error(init?.error || initErr?.message || "Failed to initiate");
 
+    // Stub fallback: provider not configured — mark order paid directly so the
+    // buyer still gets their ticket in preview/dev environments.
+    if (init.stub) {
+      const ref = `STUB-${Date.now()}`;
+      const { error: mpErr } = await supabase.rpc("mark_order_paid", {
+        _order_id: pendingOrderId, _method: "stub", _reference: ref,
+      });
+      if (mpErr) throw new Error(mpErr.message);
+      toast({ title: "Payment confirmed!", description: "Your tickets are ready." });
+      setTimeout(() => navigate(`/dashboard/orders/${pendingOrderId}`), 600);
+      return;
+    }
+
     // 2. Redirect-style provider? Send the buyer to the hosted checkout.
     if (init.redirect_url) {
       window.location.href = init.redirect_url as string;
