@@ -106,20 +106,21 @@ export default function PaymentSettings() {
       if (form.merchant_id) { newCreds.merchant_id = form.merchant_id; preview.merchant_id = mask(form.merchant_id); }
       if (form.webhook_secret) { newCreds.webhook_secret = form.webhook_secret; preview.webhook_secret = mask(form.webhook_secret); }
 
-      const { error } = await supabase.rpc("save_payment_provider", {
-        _code: code,
-        _name: form.name,
-        _enabled: form.enabled,
-        _mode: form.mode,
-        _base_url: form.base_url || null,
-        _callback_url: form.callback_url || null,
-        _redirect_success_url: form.redirect_success_url || null,
-        _redirect_cancel_url: form.redirect_cancel_url || null,
-        _credentials: Object.keys(newCreds).length ? newCreds : {},
-        _preview: preview,
-        _enc_key: "SERVER_PROVIDED",
-      } as any);
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke("payments-save-credentials", {
+        body: {
+          code,
+          name: form.name,
+          enabled: form.enabled,
+          mode: form.mode,
+          base_url: form.base_url || null,
+          callback_url: form.callback_url || null,
+          redirect_success_url: form.redirect_success_url || null,
+          redirect_cancel_url: form.redirect_cancel_url || null,
+          credentials: newCreds,
+          preview,
+        },
+      });
+      if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
       toast({ title: "Saved", description: "Payment provider updated." });
       setForm((f) => ({ ...f, public_key: "", secret_key: "", merchant_id: "", webhook_secret: "", preview }));
     } catch (e: any) {
