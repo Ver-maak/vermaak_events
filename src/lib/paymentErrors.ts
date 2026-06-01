@@ -59,3 +59,22 @@ export function explainPaymentError(input: unknown): FriendlyFailure {
     retryable: true,
   };
 }
+
+export async function getFunctionErrorMessage(error: unknown, fallback = "Request failed") {
+  const fnError = error as { message?: string; context?: { json?: () => Promise<unknown>; text?: () => Promise<string> } };
+
+  try {
+    const body = await fnError?.context?.json?.();
+    const message = (body as { error?: string; message?: string })?.error || (body as { message?: string })?.message;
+    if (message) return message;
+  } catch (_) {
+    try {
+      const text = await fnError?.context?.text?.();
+      if (text) return text;
+    } catch (_) {
+      // fall through to the SDK message below
+    }
+  }
+
+  return fnError?.message || fallback;
+}
