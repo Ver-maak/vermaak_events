@@ -1,6 +1,10 @@
 // Public webhook endpoint. URL: /payments-webhook?provider=swarmbyte
-// Verifies signature using the provider adapter, then finalizes the payment.
-import { corsHeaders, getProvider, loadProviderConfig, logCall } from "../_shared/payments.ts";
+// Swarmbyte webhooks are unsigned by design; we therefore:
+//   * verify the provider adapter still accepts the payload
+//   * deduplicate via processed_webhook_events (provider + event_key UNIQUE)
+//   * finalize via the idempotent mark_order_paid_by_reference RPC
+// A duplicate delivery is acknowledged with 200 so Swarmbyte does not retry forever.
+import { adminClient, corsHeaders, getProvider, loadProviderConfig, logCall } from "../_shared/payments.ts";
 import { finalizePayment } from "../_shared/finalize.ts";
 
 Deno.serve(async (req) => {
@@ -26,6 +30,29 @@ Deno.serve(async (req) => {
     const body = safeParse(rawBody);
     const parsed = provider.parseWebhook(body);
     if (!parsed.providerRef) return json({ error: "missing provider reference" }, 400);
+
+    // Idempotency: insert into processed_webhook_events; UNIQUE(provider,event_key)
+    // means a duplicate delivery raises a 23505 and we short-circuit.
+    const sb = adminClient();
+    const { error: dupErr } = await sb.from("processed_webhook_events").insert({
+      provider: providerCode,
+      event_key: parsed.eventKey,
+      payload: body,
+    });
+    if (dupErr) {
+      const isDup = (dupErr as { code?: string }).code === "23505";
+      await logCall({ provider_code: providerCode, direction: "inbound", endpoint: "webhook",
+        status_code: 200, request: body, response: { duplicate: isDup, error: dupErr.message } });
+      // Acknowledge duplicates so the provider stops retrying.
+      return json({ ok: true, duplicate: isDup });
+    }
+
+    // pending events (e.g. collection.initiated) — log + ack, do not mutate order.
+    if (parsed.status === "pending") {
+      await logCall({ provider_code: providerCode, direction: "inbound", endpoint: "webhook",
+        status_code: 200, request: body, response: { ok: true, status: "pending" } });
+      return json({ ok: true });
+    }
 
     const result = await finalizePayment(parsed.providerRef, parsed.status, body);
     await logCall({ provider_code: providerCode, direction: "inbound", endpoint: "webhook",

@@ -27,10 +27,9 @@ interface FormState {
   callback_url: string;
   redirect_success_url: string;
   redirect_cancel_url: string;
-  public_key: string;
-  secret_key: string;
-  merchant_id: string;
-  webhook_secret: string;
+  api_key: string;
+  api_secret: string;
+  wallet_address: string;
   preview: Record<string, string>;
 }
 
@@ -38,14 +37,13 @@ const empty: FormState = {
   name: "Swarmbyte Payments",
   enabled: false,
   mode: "sandbox",
-  base_url: "",
+  base_url: "https://core.swarmbyte.com",
   callback_url: "",
   redirect_success_url: "",
   redirect_cancel_url: "",
-  public_key: "",
-  secret_key: "",
-  merchant_id: "",
-  webhook_secret: "",
+  api_key: "",
+  api_secret: "",
+  wallet_address: "",
   preview: {},
 };
 
@@ -83,7 +81,7 @@ export default function PaymentSettings() {
           callback_url: data.callback_url || "",
           redirect_success_url: data.redirect_success_url || "",
           redirect_cancel_url: data.redirect_cancel_url || "",
-          public_key: "", secret_key: "", merchant_id: "", webhook_secret: "",
+          api_key: "", api_secret: "", wallet_address: "",
           preview: p,
         });
       } else {
@@ -101,10 +99,9 @@ export default function PaymentSettings() {
     try {
       const newCreds: Record<string, string> = {};
       const preview = { ...form.preview };
-      if (form.public_key) { newCreds.public_key = form.public_key; preview.public_key = mask(form.public_key); }
-      if (form.secret_key) { newCreds.secret_key = form.secret_key; preview.secret_key = mask(form.secret_key); }
-      if (form.merchant_id) { newCreds.merchant_id = form.merchant_id; preview.merchant_id = mask(form.merchant_id); }
-      if (form.webhook_secret) { newCreds.webhook_secret = form.webhook_secret; preview.webhook_secret = mask(form.webhook_secret); }
+      if (form.api_key) { newCreds.api_key = form.api_key; preview.api_key = mask(form.api_key); }
+      if (form.api_secret) { newCreds.api_secret = form.api_secret; preview.api_secret = mask(form.api_secret); }
+      if (form.wallet_address) { newCreds.wallet_address = form.wallet_address; preview.wallet_address = mask(form.wallet_address); }
 
       const { data, error } = await supabase.functions.invoke("payments-save-credentials", {
         body: {
@@ -122,7 +119,7 @@ export default function PaymentSettings() {
       });
       if (error || (data as any)?.error) throw new Error((data as any)?.error || error?.message);
       toast({ title: "Saved", description: "Payment provider updated." });
-      setForm((f) => ({ ...f, public_key: "", secret_key: "", merchant_id: "", webhook_secret: "", preview }));
+      setForm((f) => ({ ...f, api_key: "", api_secret: "", wallet_address: "", preview }));
     } catch (e: any) {
       toast({ title: "Save failed", description: e.message, variant: "destructive" });
     } finally {
@@ -204,11 +201,14 @@ export default function PaymentSettings() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <SecretField label="Public key" preview={form.preview.public_key} value={form.public_key} onChange={(v) => setForm({ ...form, public_key: v })} />
-                <SecretField label="Secret key" preview={form.preview.secret_key} value={form.secret_key} onChange={(v) => setForm({ ...form, secret_key: v })} />
-                <SecretField label="Merchant / Wallet ID" preview={form.preview.merchant_id} value={form.merchant_id} onChange={(v) => setForm({ ...form, merchant_id: v })} />
-                <SecretField label="Webhook secret" preview={form.preview.webhook_secret} value={form.webhook_secret} onChange={(v) => setForm({ ...form, webhook_secret: v })} />
+                <SecretField label="API key (client_id)" preview={form.preview.api_key} value={form.api_key} onChange={(v) => setForm({ ...form, api_key: v })} />
+                <SecretField label="API secret (client_secret)" preview={form.preview.api_secret} value={form.api_secret} onChange={(v) => setForm({ ...form, api_secret: v })} />
+                <SecretField label="Wallet address" preview={form.preview.wallet_address} value={form.wallet_address} onChange={(v) => setForm({ ...form, wallet_address: v })} />
               </div>
+              <p className="text-xs text-muted-foreground">
+                Note: Swarmbyte webhooks are unsigned (per their docs). Security relies on HTTPS,
+                the unguessable Supabase function URL, and idempotent processing by transactionId.
+              </p>
 
               <div className="space-y-1.5 pt-2">
                 <Label>Webhook URL (configure this in Swarmbyte dashboard)</Label>

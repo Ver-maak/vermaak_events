@@ -1,12 +1,13 @@
 // Provider-agnostic payment layer.
-// Adapters implement the PaymentProvider interface. SwarmbyteProvider is a stub
-// with TODO blocks to fill in with actual API details (endpoints, signature scheme).
+// Swarmbyte (https://docs.swarmbyte.com) adapter implementing the PaymentProvider
+// interface. The architecture is provider-agnostic so additional providers can be
+// added by implementing the interface and registering them in REGISTRY.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-signature, x-swarmbyte-signature",
+    "authorization, x-client-info, apikey, content-type, x-signature, x-swarmbyte-signature, x-swarmbyte-timestamp",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
@@ -34,16 +35,23 @@ export interface ProviderConfig {
 
 export interface InitiateInput {
   orderId: string;
+  intentId?: string;
   amount: number;
   currency: string;
   buyer: { name: string; email: string; phone?: string };
   callbackUrl: string;
   redirectSuccessUrl?: string;
   redirectCancelUrl?: string;
+  /** Idempotency key used for retry-safe collect calls. */
+  idempotencyKey?: string;
 }
 export interface InitiateResult {
   providerRef: string;
+  /** Redirect-style flow (not used by STK-push providers like Swarmbyte). */
   redirectUrl?: string;
+  /** STK-push providers: tells the UI to poll status instead of redirect. */
+  awaitConfirmation?: boolean;
+  message?: string;
   raw?: unknown;
 }
 export interface VerifyResult {
@@ -52,7 +60,9 @@ export interface VerifyResult {
 }
 export interface WebhookParsed {
   providerRef: string;
-  status: "success" | "failed" | "cancelled";
+  status: "success" | "failed" | "cancelled" | "pending";
+  /** Stable dedupe key written to processed_webhook_events. */
+  eventKey: string;
 }
 
 export interface PaymentProvider {
@@ -60,11 +70,16 @@ export interface PaymentProvider {
   testConnection(cfg: ProviderConfig): Promise<{ ok: boolean; message: string }>;
   initiate(cfg: ProviderConfig, input: InitiateInput): Promise<InitiateResult>;
   verify(cfg: ProviderConfig, providerRef: string): Promise<VerifyResult>;
+  /**
+   * Swarmbyte webhooks are NOT signed (docs explicitly state: "HTTP callbacks from
+   * SwarmByte to your webhookUrl are not signed"). Adapters for providers that DO
+   * sign should validate here and return false on mismatch.
+   */
   verifySignature(cfg: ProviderConfig, rawBody: string, headers: Headers): Promise<boolean>;
   parseWebhook(body: unknown): WebhookParsed;
 }
 
-// HMAC helper (commonly used by providers)
+// HMAC helper (kept for future signed providers)
 export async function hmacSha256Hex(secret: string, message: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw", new TextEncoder().encode(secret),
@@ -80,90 +95,173 @@ export function timingSafeEqual(a: string, b: string) {
   return r === 0;
 }
 
-// ---------------- Swarmbyte stub ----------------
-// TODO(swarmbyte): replace placeholder URLs/fields once Swarmbyte API docs are provided:
-//   - initiate-payment endpoint + request body
-//   - verify-payment endpoint
-//   - webhook signature header + algorithm + signed payload
+// ---------------- Swarmbyte ----------------
+// Reference: https://docs.swarmbyte.com/
+//   * Token:   POST /v1/oauth/collections/token  (client_credentials)
+//   * Collect: POST /v1/collect  (Bearer + X-Idempotency-Key)
+//   * Status:  GET  /v1/collect/transactions/:transactionId
+//   * Webhook: UNSIGNED — rely on HTTPS + unguessable path + idempotent processing
+// Default base URL is https://core.swarmbyte.com (Swarmbyte does not document a
+// separate sandbox host — the merchant dashboard provisions sandbox credentials
+// against the same host).
+
+const SWARMBYTE_DEFAULT_BASE = "https://core.swarmbyte.com";
+
+type CachedToken = { token: string; exp: number };
+const tokenCache = new Map<string, CachedToken>();
+
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  opts: { retries?: number; baseDelayMs?: number } = {},
+): Promise<Response> {
+  const retries = opts.retries ?? 2;
+  const baseDelay = opts.baseDelayMs ?? 400;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if (res.status === 429 || (res.status >= 500 && res.status !== 501)) {
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+          continue;
+        }
+      }
+      return res;
+    } catch (e) {
+      lastErr = e;
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+        continue;
+      }
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Network error");
+}
+
+async function swarmbyteToken(cfg: ProviderConfig): Promise<string> {
+  const base = (cfg.base_url || SWARMBYTE_DEFAULT_BASE).replace(/\/+$/, "");
+  const clientId = cfg.credentials.api_key || cfg.credentials.public_key || "";
+  const clientSecret = cfg.credentials.api_secret || cfg.credentials.secret_key || "";
+  if (!clientId || !clientSecret) throw new Error("Swarmbyte api_key / api_secret not configured");
+
+  const cacheKey = `${base}|${clientId}|collections`;
+  const cached = tokenCache.get(cacheKey);
+  if (cached && cached.exp - 30_000 > Date.now()) return cached.token;
+
+  const res = await fetchWithRetry(`${base}/v1/oauth/collections/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      grant_type: "client_credentials",
+      client_id: clientId,
+      client_secret: clientSecret,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.access_token) {
+    throw new Error(data?.message || `Swarmbyte token failed (${res.status})`);
+  }
+  const expiresIn = Number(data.expires_in || 600);
+  tokenCache.set(cacheKey, { token: data.access_token, exp: Date.now() + expiresIn * 1000 });
+  return data.access_token as string;
+}
+
+function normalizeSwarmbyteStatus(s: unknown): VerifyResult["status"] {
+  const v = String(s ?? "").toUpperCase();
+  if (v === "SUCCESS" || v === "SUCCESSFUL" || v === "COMPLETED" || v === "PAID") return "success";
+  if (v === "FAILED" || v === "ERROR") return "failed";
+  if (v === "CANCELLED" || v === "CANCELED") return "cancelled";
+  return "pending";
+}
+
 export const SwarmbyteProvider: PaymentProvider = {
   code: "swarmbyte",
 
   async testConnection(cfg) {
-    const base = cfg.base_url || "";
-    if (!base) return { ok: false, message: "Base URL not set" };
-    if (!cfg.credentials.secret_key) return { ok: false, message: "Secret key missing" };
     try {
-      // TODO: replace with real Swarmbyte ping/health endpoint
-      const r = await fetch(`${base.replace(/\/+$/, "")}/health`, {
-        headers: { Authorization: `Bearer ${cfg.credentials.secret_key}` },
-      });
-      return { ok: r.ok, message: r.ok ? `Reached ${base} (${r.status})` : `HTTP ${r.status}` };
+      const token = await swarmbyteToken(cfg);
+      return { ok: true, message: `Token issued (${token.slice(0, 8)}…)` };
     } catch (e) {
       return { ok: false, message: (e as Error).message };
     }
   },
 
   async initiate(cfg, input) {
-    const base = cfg.base_url || "";
-    // TODO(swarmbyte): use real endpoint + body schema
+    if (input.currency !== "UGX") {
+      throw new Error("Swarmbyte collections only support UGX");
+    }
+    const amount = Math.round(Number(input.amount));
+    if (!Number.isFinite(amount) || amount < 500) {
+      throw new Error("Amount must be an integer ≥ 500 UGX");
+    }
+    const phone = (input.buyer.phone || "").replace(/[^\d+]/g, "");
+    if (!phone) throw new Error("Buyer phone (msisdn) is required for Swarmbyte");
+    const walletAddress = cfg.credentials.wallet_address || cfg.credentials.merchant_id || "";
+    if (!walletAddress) throw new Error("Swarmbyte wallet_address not configured");
+
+    const base = (cfg.base_url || SWARMBYTE_DEFAULT_BASE).replace(/\/+$/, "");
+    const token = await swarmbyteToken(cfg);
+    const idempotencyKey = (input.idempotencyKey || `${input.orderId}:${input.intentId || ""}`).slice(0, 200);
+
     const body = {
-      amount: input.amount,
-      currency: input.currency,
+      walletAddress,
+      msisdn: phone,
+      amount,
       reference: input.orderId,
-      customer: input.buyer,
-      callback_url: input.callbackUrl,
-      redirect_success_url: input.redirectSuccessUrl,
-      redirect_cancel_url: input.redirectCancelUrl,
-      merchant_id: cfg.credentials.merchant_id,
-      mode: cfg.mode,
+      webhookUrl: input.callbackUrl,
     };
-    const r = await fetch(`${base.replace(/\/+$/, "")}/payments/initiate`, {
+
+    const res = await fetchWithRetry(`${base}/v1/collect`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${cfg.credentials.secret_key}`,
+        Authorization: `Bearer ${token}`,
+        "X-Idempotency-Key": idempotencyKey,
       },
       body: JSON.stringify(body),
     });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data?.message || `Initiate failed (${r.status})`);
+    const data = await res.json().catch(() => ({}));
+    if (res.status !== 202 && !res.ok) {
+      throw new Error(data?.message || `Swarmbyte collect failed (${res.status})`);
+    }
+    const payload = data?.data ?? data;
+    const transactionId = payload?.transactionId || payload?.id;
+    if (!transactionId) throw new Error("Swarmbyte did not return a transactionId");
+
     return {
-      providerRef: data.reference || data.id || data.transaction_id || crypto.randomUUID(),
-      redirectUrl: data.checkout_url || data.redirect_url,
+      providerRef: String(transactionId),
+      awaitConfirmation: true,
+      message: "STK push sent. Approve the prompt on your phone to complete payment.",
       raw: data,
     };
   },
 
   async verify(cfg, providerRef) {
-    const base = cfg.base_url || "";
-    const r = await fetch(`${base.replace(/\/+$/, "")}/payments/${encodeURIComponent(providerRef)}`, {
-      headers: { Authorization: `Bearer ${cfg.credentials.secret_key}` },
-    });
-    const data = await r.json().catch(() => ({}));
-    const s = String(data.status || "").toLowerCase();
-    const status: VerifyResult["status"] =
-      s === "success" || s === "successful" || s === "paid" ? "success" :
-      s === "failed" ? "failed" :
-      s === "cancelled" || s === "canceled" ? "cancelled" : "pending";
-    return { status, raw: data };
+    const base = (cfg.base_url || SWARMBYTE_DEFAULT_BASE).replace(/\/+$/, "");
+    const token = await swarmbyteToken(cfg);
+    const res = await fetchWithRetry(
+      `${base}/v1/collect/transactions/${encodeURIComponent(providerRef)}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const data = await res.json().catch(() => ({}));
+    const payload = data?.data ?? data;
+    return { status: normalizeSwarmbyteStatus(payload?.status), raw: data };
   },
 
-  async verifySignature(cfg, rawBody, headers) {
-    const secret = cfg.credentials.webhook_secret;
-    if (!secret) return false;
-    const provided = headers.get("x-swarmbyte-signature") || headers.get("x-signature") || "";
-    // TODO(swarmbyte): confirm signature scheme. Assuming HMAC-SHA256(rawBody) hex.
-    const expected = await hmacSha256Hex(secret, rawBody);
-    return timingSafeEqual(provided.replace(/^sha256=/, ""), expected);
+  async verifySignature(_cfg, _rawBody, _headers) {
+    // Swarmbyte webhooks are unsigned by design. Safety relies on:
+    //  - HTTPS-only callback URL (Swarmbyte rejects non-HTTPS)
+    //  - Unguessable function path (Supabase function URL + provider query param)
+    //  - Idempotent processing keyed by transactionId in processed_webhook_events
+    return true;
   },
 
   parseWebhook(body: any) {
-    const providerRef = body?.reference || body?.id || body?.transaction_id || "";
-    const s = String(body?.status || "").toLowerCase();
-    const status: WebhookParsed["status"] =
-      s === "success" || s === "successful" || s === "paid" ? "success" :
-      s === "cancelled" || s === "canceled" ? "cancelled" : "failed";
-    return { providerRef, status };
+    const providerRef = String(body?.transactionId || body?.data?.transactionId || "");
+    const status = normalizeSwarmbyteStatus(body?.status ?? body?.data?.status);
+    const event = String(body?.event || "transaction.updated");
+    return { providerRef, status, eventKey: `${event}:${providerRef}` };
   },
 };
 

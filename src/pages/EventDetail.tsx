@@ -148,20 +148,41 @@ const EventDetail = () => {
     checkout.mutate();
   };
 
-  const handleMomoConfirm = async ({ method, phone }: { method: string; phone: string; reference: string }) => {
+  const handleMomoConfirm = async ({ phone }: { method: string; phone: string; reference: string }) => {
     if (!pendingOrderId) throw new Error("No pending order");
-    // 1. Create payment intent (provider_ref tracked server-side)
-    const { data: init, error: initErr } = await supabase.functions.invoke("momo-initiate", {
-      body: { order_id: pendingOrderId, provider: method, phone },
+    // 1. Initiate via provider-agnostic edge function (Swarmbyte STK push).
+    const { data: init, error: initErr } = await supabase.functions.invoke("payments-initiate", {
+      body: { order_id: pendingOrderId, provider_code: "swarmbyte", phone },
     });
     if (initErr || init?.error) throw new Error(init?.error || initErr?.message || "Failed to initiate");
-    // 2. Trigger simulated provider callback that hits our signed webhook
-    const { data: sim, error: simErr } = await supabase.functions.invoke("momo-simulate", {
-      body: { provider_ref: init.provider_ref, provider: method, outcome: "success" },
-    });
-    if (simErr || !sim?.ok) throw new Error(sim?.data?.error || simErr?.message || "Webhook failed");
-    toast({ title: "Payment confirmed!", description: "Your tickets are ready." });
-    setTimeout(() => navigate(`/dashboard/orders/${pendingOrderId}`), 600);
+
+    // 2. Redirect-style provider? Send the buyer to the hosted checkout.
+    if (init.redirect_url) {
+      window.location.href = init.redirect_url as string;
+      return;
+    }
+
+    // 3. STK-push provider — poll payment_intents.status (webhook updates it).
+    const intentId = init.intent_id as string;
+    const deadline = Date.now() + 120_000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 3000));
+      const { data: intent } = await supabase
+        .from("payment_intents")
+        .select("status")
+        .eq("id", intentId)
+        .maybeSingle();
+      const status = intent?.status;
+      if (status === "success") {
+        toast({ title: "Payment confirmed!", description: "Your tickets are ready." });
+        setTimeout(() => navigate(`/dashboard/orders/${pendingOrderId}`), 600);
+        return;
+      }
+      if (status === "failed" || status === "cancelled") {
+        throw new Error(`Payment ${status}`);
+      }
+    }
+    throw new Error("Timed out waiting for payment confirmation. Check your phone and try again.");
   };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading…</div></div>;
