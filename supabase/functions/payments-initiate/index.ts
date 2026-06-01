@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     } catch (_e) {
       cfg = null;
     }
-    if (!cfg || !cfg.enabled || !cfg.credentials?.api_key) {
+    if (!cfg || !cfg.enabled || !cfg.credentials?.api_key || !cfg.credentials?.api_secret) {
       return json({
         ok: true,
         stub: true,
