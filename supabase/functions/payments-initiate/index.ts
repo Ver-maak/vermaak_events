@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
         request: { order_id }, response: { error: (e as Error).message },
         order_id, intent_id: intentId,
       });
-      return json({ error: (e as Error).message }, 502);
+      return json({ ok: false, error: (e as Error).message, retryable: true });
     }
 
     await sb.from("payment_intents").update({
