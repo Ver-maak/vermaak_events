@@ -24,6 +24,7 @@ const EventDetail = () => {
   const [momoOpen, setMomoOpen] = useState(false);
   const [attendeeOpen, setAttendeeOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [pendingIntentId, setPendingIntentId] = useState<string | null>(null);
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", slug],
@@ -150,6 +151,7 @@ const EventDetail = () => {
 
   const handleMomoConfirm = async ({ phone }: { method: string; phone: string; reference: string }) => {
     if (!pendingOrderId) throw new Error("No pending order");
+    setPendingIntentId(null);
     // 1. Initiate via provider-agnostic edge function (Swarmbyte STK push).
     const { data: init, error: initErr } = await supabase.functions.invoke("payments-initiate", {
       body: { order_id: pendingOrderId, provider_code: "swarmbyte", phone },
@@ -164,12 +166,13 @@ const EventDetail = () => {
 
     // 3. STK-push provider — poll payment_intents.status (webhook updates it).
     const intentId = init.intent_id as string;
+    setPendingIntentId(intentId);
     const deadline = Date.now() + 120_000;
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 3000));
       const { data: intent } = await supabase
         .from("payment_intents")
-        .select("status")
+        .select("status,raw")
         .eq("id", intentId)
         .maybeSingle();
       const status = intent?.status;
@@ -179,10 +182,25 @@ const EventDetail = () => {
         return;
       }
       if (status === "failed" || status === "cancelled") {
-        throw new Error(`Payment ${status}`);
+        const reason = (intent?.raw as any)?.error || (intent?.raw as any)?.message;
+        throw new Error(reason ? `Payment ${status}: ${reason}` : `Payment ${status}`);
       }
     }
-    throw new Error("Timed out waiting for payment confirmation. Check your phone and try again.");
+    // Timed out — caller's dialog will surface "Check status" which calls verifyManually.
+    throw new Error("Confirmation timed out. Tap 'Check status' if you already approved on your phone.");
+  };
+
+  const verifyManually = async (): Promise<"success" | "failed" | "cancelled" | "pending"> => {
+    if (!pendingIntentId) return "pending";
+    const { data, error } = await supabase.functions.invoke("payments-verify", {
+      body: { intent_id: pendingIntentId },
+    });
+    if (error || data?.error) throw new Error(data?.error || error?.message || "Verification failed");
+    const status = (data?.status as "success" | "failed" | "cancelled" | "pending") || "pending";
+    if (status === "success") {
+      setTimeout(() => navigate(`/dashboard/orders/${pendingOrderId}`), 600);
+    }
+    return status;
   };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading…</div></div>;
@@ -347,6 +365,7 @@ const EventDetail = () => {
         defaultPhone={buyerPhone}
         feeQuote={feeQuote}
         onConfirm={handleMomoConfirm}
+        onManualVerify={verifyManually}
       />
     </div>
   );
