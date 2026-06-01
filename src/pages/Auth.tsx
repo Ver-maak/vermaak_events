@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
-import { Ticket, ArrowRight } from "lucide-react";
+import { Ticket, ArrowRight, AlertCircle } from "lucide-react";
+
+type LoginError = { kind: "invalid_credentials" | "unconfirmed" | "rate" | "other"; email: string; message: string };
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,19 +18,22 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<LoginError | null>(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setLoginError(null);
+    const normalizedEmail = email.trim().toLowerCase();
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+        const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (error) throw error;
         navigate("/dashboard");
       } else {
         const { data, error } = await supabase.auth.signUp({
-          email: email.trim().toLowerCase(), password,
+          email: normalizedEmail, password,
           options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
@@ -40,15 +46,23 @@ const Auth = () => {
       }
     } catch (err: any) {
       const msg = (err?.message || "").toLowerCase();
+      let kind: LoginError["kind"] = "other";
       let friendly = err?.message || "Something went wrong.";
       if (msg.includes("invalid login credentials")) {
-        friendly = "Email or password is incorrect. Double-check your password (it's case-sensitive) or use \"Forgot your password?\" to reset it.";
+        kind = "invalid_credentials";
+        friendly = "We couldn't sign you in with that email and password.";
       } else if (msg.includes("email not confirmed")) {
+        kind = "unconfirmed";
         friendly = "Please confirm your email address using the link we sent you, then sign in again.";
       } else if (msg.includes("rate")) {
+        kind = "rate";
         friendly = "Too many attempts — please wait a moment and try again.";
       }
-      toast({ title: "Sign-in failed", description: friendly, variant: "destructive" });
+      if (isLogin) {
+        setLoginError({ kind, email: normalizedEmail, message: friendly });
+      } else {
+        toast({ title: "Sign-up failed", description: friendly, variant: "destructive" });
+      }
     } finally { setLoading(false); }
   };
 
@@ -87,6 +101,32 @@ const Auth = () => {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Loading…" : isLogin ? "Sign in" : "Create account"}<ArrowRight className="h-4 w-4" />
               </Button>
+              {isLogin && loginError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Sign-in failed</AlertTitle>
+                  <AlertDescription className="space-y-3">
+                    <p>{loginError.message}</p>
+                    {loginError.kind === "invalid_credentials" && (
+                      <>
+                        <p className="text-xs">
+                          You entered <strong className="break-all">{loginError.email}</strong>. If that's not your account email, correct it above and try again. Passwords are case-sensitive.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button asChild size="sm" variant="secondary">
+                            <Link to={`/forgot-password?email=${encodeURIComponent(loginError.email)}`}>
+                              Reset password for this email
+                            </Link>
+                          </Button>
+                          <Button type="button" size="sm" variant="outline" onClick={() => { setPassword(""); setLoginError(null); }}>
+                            Try a different password
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
             </form>
             <div className="mt-4 flex flex-col items-center gap-2">
               <button onClick={() => setIsLogin(!isLogin)} className="text-sm text-muted-foreground hover:text-primary transition-colors">
