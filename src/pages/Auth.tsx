@@ -101,6 +101,32 @@ const Auth = () => {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Loading…" : isLogin ? "Sign in" : "Create account"}<ArrowRight className="h-4 w-4" />
               </Button>
+              {isLogin && loginError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Sign-in failed</AlertTitle>
+                  <AlertDescription className="space-y-3">
+                    <p>{loginError.message}</p>
+                    {loginError.kind === "invalid_credentials" && (
+                      <>
+                        <p className="text-xs">
+                          You entered <strong className="break-all">{loginError.email}</strong>. If that's not your account email, correct it above and try again. Passwords are case-sensitive.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button asChild size="sm" variant="secondary">
+                            <Link to={`/forgot-password?email=${encodeURIComponent(loginError.email)}`}>
+                              Reset password for this email
+                            </Link>
+                          </Button>
+                          <Button type="button" size="sm" variant="outline" onClick={() => { setPassword(""); setLoginError(null); }}>
+                            Try a different password
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
             </form>
             <div className="mt-4 flex flex-col items-center gap-2">
               <button onClick={() => setIsLogin(!isLogin)} className="text-sm text-muted-foreground hover:text-primary transition-colors">
