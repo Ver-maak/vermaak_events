@@ -99,10 +99,9 @@ export default function PaymentSettings() {
     try {
       const newCreds: Record<string, string> = {};
       const preview = { ...form.preview };
-      if (form.public_key) { newCreds.public_key = form.public_key; preview.public_key = mask(form.public_key); }
-      if (form.secret_key) { newCreds.secret_key = form.secret_key; preview.secret_key = mask(form.secret_key); }
-      if (form.merchant_id) { newCreds.merchant_id = form.merchant_id; preview.merchant_id = mask(form.merchant_id); }
-      if (form.webhook_secret) { newCreds.webhook_secret = form.webhook_secret; preview.webhook_secret = mask(form.webhook_secret); }
+      if (form.api_key) { newCreds.api_key = form.api_key; preview.api_key = mask(form.api_key); }
+      if (form.api_secret) { newCreds.api_secret = form.api_secret; preview.api_secret = mask(form.api_secret); }
+      if (form.wallet_address) { newCreds.wallet_address = form.wallet_address; preview.wallet_address = mask(form.wallet_address); }
 
       const { data, error } = await supabase.functions.invoke("payments-save-credentials", {
         body: {
