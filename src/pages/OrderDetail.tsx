@@ -1,15 +1,27 @@
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, Calendar, MapPin, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, CheckCircle2, Trash2 } from "lucide-react";
 import { formatDateTime, formatMoney } from "@/lib/format";
+import { useAuth } from "@/lib/auth";
+import { toast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 const OrderDetail = () => {
   const { id } = useParams();
+  const { roles } = useAuth();
+  const isSuperAdmin = roles.includes("super_admin");
+  const qc = useQueryClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const { data: order, isLoading } = useQuery({
     queryKey: ["order-detail", id],
     enabled: !!id,
@@ -18,6 +30,18 @@ const OrderDetail = () => {
       return data;
     },
   });
+
+  const handleDelete = async (ticketId: string) => {
+    setDeletingId(ticketId);
+    const { error } = await supabase.from("tickets").delete().eq("id", ticketId);
+    setDeletingId(null);
+    if (error) {
+      toast({ title: "Failed to delete ticket", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Ticket deleted" });
+    qc.invalidateQueries({ queryKey: ["order-detail", id] });
+  };
 
   if (isLoading) return <DashboardLayout><p className="text-muted-foreground">Loading…</p></DashboardLayout>;
   if (!order) return <DashboardLayout><p>Order not found</p></DashboardLayout>;
@@ -57,6 +81,29 @@ const OrderDetail = () => {
                   </div>
                   <p className="font-mono text-xs mt-3 text-muted-foreground">{t.code}</p>
                   {t.checked_in_at && <p className="mt-2 text-xs text-success flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" />Checked in</p>}
+                  {isSuperAdmin && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm" className="mt-4 gap-1" disabled={deletingId === t.id}>
+                          <Trash2 className="h-3.5 w-3.5" />Delete ticket
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this ticket?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This permanently removes ticket <span className="font-mono">{t.code}</span> for {t.holder_name}. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(t.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </Card>
             ))}
