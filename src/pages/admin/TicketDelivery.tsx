@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { renderTicketHtml, ticketFileName, cleanFilePart } from "@/lib/ticketHtml";
+import { renderTicketHtml, ticketFileName } from "@/lib/ticketHtml";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
 
