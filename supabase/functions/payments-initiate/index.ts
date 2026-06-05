@@ -13,24 +13,26 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const authHeader = req.headers.get("Authorization") || "";
-    if (!authHeader.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+    if (!authHeader.startsWith("Bearer ")) return json({ ok: false, error: "Please sign in again before paying." });
 
     const userSb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: claims, error: ce } = await userSb.auth.getClaims(authHeader.replace("Bearer ", ""));
-    if (ce || !claims?.claims?.sub) return json({ error: "Unauthorized" }, 401);
-    const userId = claims.claims.sub;
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: ue } = await userSb.auth.getUser(token);
+    if (ue || !userData?.user?.id) return json({ ok: false, error: "Your session expired. Please sign in again." });
+    const userId = userData.user.id;
 
     const body = await req.json().catch(() => ({}));
     const { order_id, provider_code, phone } = body as { order_id?: string; provider_code?: string; phone?: string };
-    if (!order_id || !provider_code) return json({ error: "order_id and provider_code required" }, 400);
+    if (!order_id || !provider_code) return json({ ok: false, error: "Missing order or payment provider." });
 
     const sb = adminClient();
     const { data: order, error: oe } = await sb.from("orders").select("*").eq("id", order_id).single();
-    if (oe || !order) return json({ error: "Order not found" }, 404);
-    if (order.buyer_id !== userId) return json({ error: "Forbidden" }, 403);
-    if (order.status !== "pending") return json({ error: `Order is ${order.status}` }, 400);
+    if (oe || !order) return json({ ok: false, error: "Order not found." });
+    if (order.buyer_id !== userId) return json({ ok: false, error: "You can only pay for your own order." });
+    if (order.status === "paid") return json({ ok: true, already_paid: true, await_confirmation: false, message: "Order already paid." });
+    if (order.status !== "pending") return json({ ok: false, error: `Order is ${order.status}. Please create a new order.` });
 
     // Load provider config; fall back to stub mode if not configured or disabled
     // so checkout still works in dev/preview environments.
@@ -55,6 +57,8 @@ Deno.serve(async (req) => {
       `${projectUrl}/functions/v1/payments-webhook?provider=${provider_code}`;
 
     const buyerPhone = phone || order.buyer_phone || "";
+    const { data: feeQuote } = await sb.rpc("quote_order_fee", { _order_id: order.id });
+    const amountToCharge = Number((feeQuote as any)?.grand_total ?? order.total_amount);
 
     // Create the intent first so we have a stable idempotency key.
     const intentId = crypto.randomUUID();
@@ -63,20 +67,20 @@ Deno.serve(async (req) => {
       order_id: order.id,
       provider: provider_code,
       provider_ref: `pending:${intentId}`, // placeholder; replaced after initiate
-      amount: order.total_amount,
+      amount: amountToCharge,
       currency: order.currency,
       phone: buyerPhone,
       status: "pending",
       raw: {},
     });
-    if (insertErr) return json({ error: insertErr.message }, 500);
+    if (insertErr) return json({ ok: false, error: insertErr.message, retryable: true });
 
     let result;
     try {
       result = await provider.initiate(cfg, {
         orderId: order.id,
         intentId,
-        amount: Number(order.total_amount),
+        amount: amountToCharge,
         currency: order.currency,
         buyer: { name: order.buyer_name, email: order.buyer_email, phone: buyerPhone || undefined },
         callbackUrl,
@@ -117,7 +121,7 @@ Deno.serve(async (req) => {
       message: result.message,
     });
   } catch (e) {
-    return json({ error: (e as Error).message }, 500);
+    return json({ ok: false, error: (e as Error).message || "Payment could not be started.", retryable: true });
   }
 });
 
