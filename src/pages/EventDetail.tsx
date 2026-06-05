@@ -159,6 +159,12 @@ const EventDetail = () => {
     });
     if (initErr || init?.error) throw new Error(init?.error || await getFunctionErrorMessage(initErr, "Failed to initiate payment"));
 
+    if (init.already_paid) {
+      toast({ title: "Payment confirmed!", description: "Your tickets are ready." });
+      setTimeout(() => navigate(`/dashboard/orders/${pendingOrderId}`), 600);
+      return;
+    }
+
     // Stub fallback: provider not configured — mark order paid directly so the
     // buyer still gets their ticket in preview/dev environments.
     if (init.stub) {
@@ -184,6 +190,19 @@ const EventDetail = () => {
     const deadline = Date.now() + 120_000;
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 3000));
+      const { data: verified, error: verifyErr } = await supabase.functions.invoke("payments-verify", {
+        body: { intent_id: intentId },
+      });
+      if (verifyErr || verified?.error) throw new Error(verified?.error || await getFunctionErrorMessage(verifyErr, "Verification failed"));
+      if (verified?.status === "success") {
+        toast({ title: "Payment confirmed!", description: "Your tickets are ready." });
+        setTimeout(() => navigate(`/dashboard/orders/${pendingOrderId}`), 600);
+        return;
+      }
+      if (verified?.status === "failed" || verified?.status === "cancelled") {
+        const reason = (verified?.result as any)?.error || (verified?.raw as any)?.message;
+        throw new Error(reason ? `Payment ${verified.status}: ${reason}` : `Payment ${verified.status}`);
+      }
       const { data: intent } = await supabase
         .from("payment_intents")
         .select("status,raw")
