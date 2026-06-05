@@ -266,5 +266,3 @@ const triggerDownload = (blob: Blob, name: string) => {
 };
 
 export default TicketDelivery;
-// Keep cleanFilePart import used (re-export to avoid tree shake warnings if needed)
-export { cleanFilePart };
