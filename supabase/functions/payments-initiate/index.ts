@@ -57,7 +57,8 @@ Deno.serve(async (req) => {
       `${projectUrl}/functions/v1/payments-webhook?provider=${provider_code}`;
 
     const buyerPhone = phone || order.buyer_phone || "";
-    const { data: feeQuote } = await sb.rpc("quote_order_fee", { _order_id: order.id });
+    const { data: feeQuote, error: feeErr } = await userSb.rpc("quote_order_fee", { _order_id: order.id });
+    if (feeErr) return json({ ok: false, error: feeErr.message, retryable: true });
     const amountToCharge = Number((feeQuote as any)?.grand_total ?? order.total_amount);
 
     // Create the intent first so we have a stable idempotency key.
