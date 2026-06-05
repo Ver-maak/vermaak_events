@@ -37,6 +37,9 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
+    --ticket-qr-background: 0 0% 100%;
+    --ticket-qr-foreground: 222 47% 11%;
+
     --border: 210 22% 89%;
     --input: 210 22% 89%;
     --ring: 208 88% 48%;
@@ -82,6 +85,8 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 80% 50%;
     --warning-foreground: 0 0% 100%;
+    --ticket-qr-background: 0 0% 100%;
+    --ticket-qr-foreground: 222 47% 11%;
     --border: 215 50% 18%;
     --input: 215 50% 18%;
     --ring: 200 95% 55%;

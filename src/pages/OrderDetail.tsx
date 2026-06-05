@@ -8,12 +8,12 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, Calendar, MapPin, CheckCircle2, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Trash2 } from "lucide-react";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
+import TicketPreviewCard from "@/components/TicketPreviewCard";
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -72,19 +72,15 @@ const OrderDetail = () => {
           <h2 className="text-lg font-semibold mb-3">Your tickets ({(order as any).tickets?.length || 0})</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(order as any).tickets?.map((t: any) => (
-              <Card key={t.id} className="overflow-hidden">
-                <div className="p-5 flex flex-col items-center text-center">
-                  <p className="text-xs uppercase tracking-wide text-primary font-semibold mb-1">{t.ticket_tiers?.name || "Ticket"}</p>
-                  <p className="font-medium mb-3">{t.holder_name}</p>
-                  <div className="bg-white p-3 rounded-lg border">
-                    <QRCodeSVG value={t.code} size={160} />
-                  </div>
-                  <p className="font-mono text-xs mt-3 text-muted-foreground">{t.code}</p>
-                  {t.checked_in_at && <p className="mt-2 text-xs text-success flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5" />Checked in</p>}
-                  {isSuperAdmin && (
+              <TicketPreviewCard
+                key={t.id}
+                ticket={t}
+                event={(order as any).events}
+                order={order}
+                actions={isSuperAdmin && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" className="mt-4 gap-1" disabled={deletingId === t.id}>
+                        <Button variant="destructive" size="sm" className="gap-1" disabled={deletingId === t.id}>
                           <Trash2 className="h-3.5 w-3.5" />Delete ticket
                         </Button>
                       </AlertDialogTrigger>
@@ -103,9 +99,8 @@ const OrderDetail = () => {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                  )}
-                </div>
-              </Card>
+                )}
+              />
             ))}
           </div>
         </div>
