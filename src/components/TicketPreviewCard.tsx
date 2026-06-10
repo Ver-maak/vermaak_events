@@ -149,7 +149,10 @@ const TicketPreviewCard = ({ ticket, event, order, actions, showDownload = true 
         <div className="no-print border-t border-border bg-muted/30 p-3 flex flex-wrap gap-2 justify-end">
           {showDownload && (
             <>
-              <Button variant="outline" size="sm" className="gap-2" onClick={downloadTicket}><Download className="h-4 w-4" />Download</Button>
+              <Button size="sm" className="gap-2" onClick={downloadPng} disabled={downloading === "png"}>
+                <FileImage className="h-4 w-4" />{downloading === "png" ? "Rendering…" : "Download PNG"}
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={downloadTicket}><Download className="h-4 w-4" />HTML</Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={printTicket}><Printer className="h-4 w-4" />Print / PDF</Button>
             </>
           )}
