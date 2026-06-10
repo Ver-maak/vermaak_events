@@ -9,10 +9,10 @@ Deno.serve(async (req) => {
     const userSb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: claims } = await userSb.auth.getClaims(authHeader.replace("Bearer ", ""));
-    if (!claims?.claims?.sub) return json({ error: "Unauthorized" }, 401);
+    const { data: userData, error: userErr } = await userSb.auth.getUser();
+    if (userErr || !userData?.user?.id) return json({ error: "Unauthorized" }, 401);
     const { data: isAdmin } = await userSb.rpc("has_role", {
-      _user_id: claims.claims.sub, _role: "super_admin",
+      _user_id: userData.user.id, _role: "super_admin",
     });
     if (!isAdmin) return json({ error: "Forbidden" }, 403);
 
