@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { Copy, KeyRound, Plus, Trash2, Webhook, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
+import { getFunctionErrorMessage } from "@/lib/paymentErrors";
 
 const EVENT_TYPES = ["order.paid", "ticket.checked_in"] as const;
 
