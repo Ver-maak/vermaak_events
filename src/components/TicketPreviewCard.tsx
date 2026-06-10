@@ -43,6 +43,26 @@ const TicketPreviewCard = ({ ticket, event, order, actions, showDownload = true 
     URL.revokeObjectURL(url);
   };
 
+  const downloadPng = async () => {
+    if (!ticketRef.current) return;
+    try {
+      setDownloading("png");
+      const dataUrl = await toPng(ticketRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `${cleanFilePart(ticket.code)}-${cleanFilePart(event?.title || "ticket")}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   const printTicket = () => {
     const win = window.open("", "_blank", "noopener,noreferrer,width=720,height=900");
     if (!win) return;
