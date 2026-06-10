@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Send, Plus, Trash2, ExternalLink, Users, BarChart3 } from "lucide-react";
+import { ArrowLeft, Save, Send, Plus, Trash2, ExternalLink, Users, BarChart3, Upload, X, ImageIcon, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
@@ -142,8 +142,12 @@ const EventEditor = () => {
                   <Textarea rows={5} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Tell people what to expect…" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Cover image URL</Label>
-                  <Input value={form.cover_image_url} onChange={(e) => setForm({ ...form, cover_image_url: e.target.value })} placeholder="https://…" />
+                  <Label>Cover image</Label>
+                  <CoverImageUploader
+                    value={form.cover_image_url}
+                    onChange={(url) => setForm({ ...form, cover_image_url: url })}
+                    userId={user?.id}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Venue</Label><Input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} placeholder="Kampala Serena Hotel" /></div>
@@ -331,6 +335,129 @@ const AnalyticsPanel = ({ eventId, currency }: { eventId: string; currency: stri
             );
           })}
       </CardContent></Card>
+    </div>
+  );
+};
+
+const COVER_BUCKET = "event-covers";
+const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 10; // ~10 years
+
+const CoverImageUploader = ({
+  value,
+  onChange,
+  userId,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  userId?: string;
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file: File) => {
+    if (!userId) {
+      toast({ title: "Sign in required", description: "Please sign in to upload images.", variant: "destructive" });
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please choose an image (PNG, JPG, WebP).", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Cover image must be under 5MB.", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from(COVER_BUCKET).upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+      if (upErr) throw upErr;
+      const { data: signed, error: sErr } = await supabase.storage
+        .from(COVER_BUCKET)
+        .createSignedUrl(path, SIGNED_URL_TTL);
+      if (sErr) throw sErr;
+      onChange(signed.signedUrl);
+      toast({ title: "Image uploaded" });
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {value ? (
+        <div className="relative group rounded-lg overflow-hidden border border-border bg-muted">
+          <img src={value} alt="Cover preview" className="w-full aspect-video object-cover" />
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="absolute top-2 right-2 h-8 w-8 rounded-full bg-background/90 hover:bg-background flex items-center justify-center shadow-md transition"
+            aria-label="Remove cover image"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="w-full aspect-video rounded-lg border-2 border-dashed border-border bg-muted/40 hover:bg-muted/70 hover:border-primary/50 transition flex flex-col items-center justify-center gap-2 text-muted-foreground"
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span className="text-sm">Uploading…</span>
+            </>
+          ) : (
+            <>
+              <ImageIcon className="h-8 w-8" />
+              <span className="text-sm font-medium">Click to upload a cover image</span>
+              <span className="text-xs">PNG, JPG or WebP up to 5MB</span>
+            </>
+          )}
+        </button>
+      )}
+
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="gap-2"
+        >
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          {value ? "Replace image" : "Upload image"}
+        </Button>
+        <span className="text-xs text-muted-foreground">or paste a URL</span>
+      </div>
+
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://…"
+      />
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFile(file);
+        }}
+      />
     </div>
   );
 };
