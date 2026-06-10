@@ -61,7 +61,8 @@ const Developer = () => {
       const { data, error } = await supabase.functions.invoke("api-keys?action=create", {
         body: { name: keyName || "Default key" },
       });
-      if (error || data?.error) throw new Error(data?.error || error?.message);
+      if (error) throw new Error(await getFunctionErrorMessage(error, "Could not create API key"));
+      if ((data as any)?.error) throw new Error((data as any).error);
       return data;
     },
     onSuccess: (data) => {
@@ -74,10 +75,12 @@ const Developer = () => {
 
   const revokeKey = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.functions.invoke("api-keys?action=revoke", { body: { id } });
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke("api-keys?action=revoke", { body: { id } });
+      if (error) throw new Error(await getFunctionErrorMessage(error, "Could not revoke API key"));
+      if ((data as any)?.error) throw new Error((data as any).error);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["api-keys"] }),
+    onError: (e: any) => toast({ title: "Could not revoke key", description: e.message, variant: "destructive" }),
   });
 
   const createHook = useMutation({
