@@ -1,6 +1,7 @@
-import { ReactNode, useRef } from "react";
+import { ReactNode, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Calendar, CheckCircle2, Download, Mail, MapPin, Printer, Ticket, User } from "lucide-react";
+import { toPng } from "html-to-image";
+import { Calendar, CheckCircle2, Download, FileImage, Mail, MapPin, Printer, Ticket, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDateTime, formatMoney } from "@/lib/format";
@@ -17,6 +18,7 @@ const cleanFilePart = (value: string) => value.replace(/[^a-z0-9-]+/gi, "-").rep
 
 const TicketPreviewCard = ({ ticket, event, order, actions, showDownload = true }: TicketPreviewCardProps) => {
   const ticketRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState<"png" | "html" | null>(null);
   const tierName = ticket.ticket_tiers?.name || ticket.tier_name || "Event Ticket";
   const venue = event?.venue || event?.city || "TBA";
   const holderEmail = ticket.holder_email || order?.buyer_email;
@@ -39,6 +41,26 @@ const TicketPreviewCard = ({ ticket, event, order, actions, showDownload = true 
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  };
+
+  const downloadPng = async () => {
+    if (!ticketRef.current) return;
+    try {
+      setDownloading("png");
+      const dataUrl = await toPng(ticketRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+      });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `${cleanFilePart(ticket.code)}-${cleanFilePart(event?.title || "ticket")}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } finally {
+      setDownloading(null);
+    }
   };
 
   const printTicket = () => {
@@ -127,7 +149,10 @@ const TicketPreviewCard = ({ ticket, event, order, actions, showDownload = true 
         <div className="no-print border-t border-border bg-muted/30 p-3 flex flex-wrap gap-2 justify-end">
           {showDownload && (
             <>
-              <Button variant="outline" size="sm" className="gap-2" onClick={downloadTicket}><Download className="h-4 w-4" />Download</Button>
+              <Button size="sm" className="gap-2" onClick={downloadPng} disabled={downloading === "png"}>
+                <FileImage className="h-4 w-4" />{downloading === "png" ? "Rendering…" : "Download PNG"}
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={downloadTicket}><Download className="h-4 w-4" />HTML</Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={printTicket}><Printer className="h-4 w-4" />Print / PDF</Button>
             </>
           )}
