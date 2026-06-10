@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Save, Send, Plus, Trash2, ExternalLink, Users, BarChart3, Upload, X, ImageIcon, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { slugify, formatMoney, formatDateTime } from "@/lib/format";
@@ -114,6 +115,37 @@ const EventEditor = () => {
     },
   });
 
+  const [confirmText, setConfirmText] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const del = useMutation({
+    mutationFn: async () => {
+      if (!id) throw new Error("Missing event");
+      // Order matters: remove children before parent (FKs may not cascade).
+      const { data: orderIds } = await supabase.from("orders").select("id").eq("event_id", id);
+      const ids = (orderIds || []).map((o: any) => o.id);
+      if (ids.length) {
+        const { error: piErr } = await supabase.from("payment_intents").delete().in("order_id", ids);
+        if (piErr) throw piErr;
+      }
+      const { error: tErr } = await supabase.from("tickets").delete().eq("event_id", id);
+      if (tErr) throw tErr;
+      const { error: oErr } = await supabase.from("orders").delete().eq("event_id", id);
+      if (oErr) throw oErr;
+      const { error: trErr } = await supabase.from("ticket_tiers").delete().eq("event_id", id);
+      if (trErr) throw trErr;
+      const { error: eErr } = await supabase.from("events").delete().eq("id", id);
+      if (eErr) throw eErr;
+    },
+    onSuccess: () => {
+      toast({ title: "Event deleted", description: "The event and all related data have been removed." });
+      qc.invalidateQueries({ queryKey: ["organizer-events"] });
+      setDeleteOpen(false);
+      navigate("/dashboard/events");
+    },
+    onError: (e: any) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+  });
+
+
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-5xl">
@@ -188,6 +220,57 @@ const EventEditor = () => {
               )}
               {!isNew && form.status === "published" && (
                 <Button variant="outline" onClick={() => setStatus.mutate("draft")}>Unpublish</Button>
+              )}
+              {!isNew && (
+                <AlertDialog open={deleteOpen} onOpenChange={(o) => { setDeleteOpen(o); if (!o) setConfirmText(""); }}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="gap-2 ml-auto"><Trash2 className="h-4 w-4" />Delete event</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                        <Trash2 className="h-5 w-5" /> Permanently delete this event?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription asChild>
+                        <div className="space-y-3 pt-1">
+                          <p>
+                            This will <strong>permanently delete</strong> <span className="font-semibold text-foreground">"{form.title}"</span> along with:
+                          </p>
+                          <ul className="list-disc pl-5 text-sm space-y-1">
+                            <li>All ticket tiers</li>
+                            <li>All orders and payment intents</li>
+                            <li>All issued tickets and check-in history</li>
+                          </ul>
+                          <p className="text-destructive font-medium">
+                            This action cannot be undone.
+                          </p>
+                          <div className="space-y-1.5 pt-1">
+                            <Label htmlFor="confirm-delete" className="text-xs">
+                              Type <code className="px-1 py-0.5 rounded bg-muted text-foreground">DELETE</code> to confirm
+                            </Label>
+                            <Input
+                              id="confirm-delete"
+                              value={confirmText}
+                              onChange={(e) => setConfirmText(e.target.value)}
+                              placeholder="DELETE"
+                              autoComplete="off"
+                            />
+                          </div>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={del.isPending}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={confirmText !== "DELETE" || del.isPending}
+                        onClick={(e) => { e.preventDefault(); del.mutate(); }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {del.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting…</> : "Delete event"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
           </TabsContent>
