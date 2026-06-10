@@ -15,6 +15,14 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { slugify, formatMoney, formatDateTime } from "@/lib/format";
 
+// Convert an ISO/UTC timestamp into the "YYYY-MM-DDTHH:mm" string that
+// <input type="datetime-local"> expects, expressed in the user's LOCAL timezone.
+const toLocalInput = (iso: string) => {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 const EventEditor = () => {
   const { id } = useParams();
   const isNew = id === "new";
@@ -43,8 +51,8 @@ const EventEditor = () => {
         title: event.title || "", description: event.description || "",
         venue: event.venue || "", city: event.city || "", category: event.category || "",
         cover_image_url: event.cover_image_url || "",
-        starts_at: event.starts_at ? new Date(event.starts_at).toISOString().slice(0, 16) : "",
-        ends_at: event.ends_at ? new Date(event.ends_at).toISOString().slice(0, 16) : "",
+        starts_at: event.starts_at ? toLocalInput(event.starts_at) : "",
+        ends_at: event.ends_at ? toLocalInput(event.ends_at) : "",
         currency: event.currency || "UGX",
         capacity: event.capacity ? String(event.capacity) : "",
         status: event.status as any,
