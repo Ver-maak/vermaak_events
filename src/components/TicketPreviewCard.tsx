@@ -1,6 +1,7 @@
-import { ReactNode, useRef } from "react";
+import { ReactNode, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Calendar, CheckCircle2, Download, Mail, MapPin, Printer, Ticket, User } from "lucide-react";
+import { toPng } from "html-to-image";
+import { Calendar, CheckCircle2, Download, FileImage, Mail, MapPin, Printer, Ticket, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDateTime, formatMoney } from "@/lib/format";
