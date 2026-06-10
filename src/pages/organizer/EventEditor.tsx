@@ -115,6 +115,37 @@ const EventEditor = () => {
     },
   });
 
+  const [confirmText, setConfirmText] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const del = useMutation({
+    mutationFn: async () => {
+      if (!id) throw new Error("Missing event");
+      // Order matters: remove children before parent (FKs may not cascade).
+      const { data: orderIds } = await supabase.from("orders").select("id").eq("event_id", id);
+      const ids = (orderIds || []).map((o: any) => o.id);
+      if (ids.length) {
+        const { error: piErr } = await supabase.from("payment_intents").delete().in("order_id", ids);
+        if (piErr) throw piErr;
+      }
+      const { error: tErr } = await supabase.from("tickets").delete().eq("event_id", id);
+      if (tErr) throw tErr;
+      const { error: oErr } = await supabase.from("orders").delete().eq("event_id", id);
+      if (oErr) throw oErr;
+      const { error: trErr } = await supabase.from("ticket_tiers").delete().eq("event_id", id);
+      if (trErr) throw trErr;
+      const { error: eErr } = await supabase.from("events").delete().eq("id", id);
+      if (eErr) throw eErr;
+    },
+    onSuccess: () => {
+      toast({ title: "Event deleted", description: "The event and all related data have been removed." });
+      qc.invalidateQueries({ queryKey: ["organizer-events"] });
+      setDeleteOpen(false);
+      navigate("/dashboard/events");
+    },
+    onError: (e: any) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+  });
+
+
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-5xl">
