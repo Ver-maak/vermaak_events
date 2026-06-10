@@ -34,22 +34,29 @@ Deno.serve(async (req) => {
     if (order.status === "paid") return json({ ok: true, already_paid: true, await_confirmation: false, message: "Order already paid." });
     if (order.status !== "pending") return json({ ok: false, error: `Order is ${order.status}. Please create a new order.` });
 
-    // Load provider config; fall back to stub mode if not configured or disabled
-    // so checkout still works in dev/preview environments.
+    // Load provider config. We DO NOT silently fall back to a stub — that
+    // hides misconfiguration and causes orders to be marked "paid" without
+    // ever charging the user. If the provider isn't ready, return a clear
+    // error so the super admin can finish setup in Admin → Payment Settings.
     let cfg: Awaited<ReturnType<typeof loadProviderConfig>> | null = null;
     try {
       cfg = await loadProviderConfig(provider_code);
-    } catch (_e) {
-      cfg = null;
+    } catch (e) {
+      return json({ ok: false, error: `Payment provider "${provider_code}" is not configured. Add credentials in Admin → Payment Settings.` });
     }
-    if (!cfg || !cfg.enabled || !cfg.credentials?.api_key || !cfg.credentials?.api_secret) {
-      return json({
-        ok: true,
-        stub: true,
-        await_confirmation: false,
-        message: "Payments are not configured yet. Using stub confirmation.",
-      });
+    if (!cfg.enabled) {
+      return json({ ok: false, error: `Payment provider "${provider_code}" is disabled. Enable it in Admin → Payment Settings.` });
     }
+    const missing: string[] = [];
+    if (!cfg.credentials?.api_key) missing.push("api_key");
+    if (!cfg.credentials?.api_secret) missing.push("api_secret");
+    if (provider_code === "swarmbyte" && !(cfg.credentials?.wallet_address || cfg.credentials?.merchant_id)) {
+      missing.push("wallet_address");
+    }
+    if (missing.length) {
+      return json({ ok: false, error: `Swarmbyte credentials missing: ${missing.join(", ")}. Add them in Admin → Payment Settings.` });
+    }
+
 
     const provider = getProvider(provider_code);
     const projectUrl = Deno.env.get("SUPABASE_URL")!;
