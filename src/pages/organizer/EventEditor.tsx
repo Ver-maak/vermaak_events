@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Save, Send, Plus, Trash2, ExternalLink, Users, BarChart3, Upload, X, ImageIcon, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { CoverImageCropDialog } from "@/components/CoverImageCropDialog";
 import { useAuth } from "@/lib/auth";
 import { slugify, formatMoney, formatDateTime } from "@/lib/format";
 
