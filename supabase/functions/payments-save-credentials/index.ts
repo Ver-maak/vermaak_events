@@ -25,8 +25,9 @@ Deno.serve(async (req) => {
     } = body || {};
     if (!code || !name) return json({ error: "code and name required" }, 400);
 
-    const sb = adminClient();
-    const { data, error } = await sb.rpc("save_payment_provider", {
+    // Call via the user-context client so auth.uid() is available inside
+    // the SECURITY DEFINER function's has_role() check.
+    const { data, error } = await userSb.rpc("save_payment_provider", {
       _code: code,
       _name: name,
       _enabled: !!enabled,
