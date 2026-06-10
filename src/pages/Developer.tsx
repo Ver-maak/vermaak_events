@@ -31,7 +31,8 @@ const Developer = () => {
     queryKey: ["api-keys"],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("api-keys", { method: "GET" });
-      if (error) throw error;
+      if (error) throw new Error(await getFunctionErrorMessage(error, "Could not load API keys"));
+      if ((data as any)?.error) throw new Error((data as any).error);
       return data?.keys || [];
     },
   });
