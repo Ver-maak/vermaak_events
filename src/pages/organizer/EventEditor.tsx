@@ -353,8 +353,11 @@ const CoverImageUploader = ({
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
-  const handleFile = async (file: File) => {
+  const openFile = () => inputRef.current?.click();
+
+  const handleFilePicked = (file: File) => {
     if (!userId) {
       toast({ title: "Sign in required", description: "Please sign in to upload images.", variant: "destructive" });
       return;
@@ -367,14 +370,20 @@ const CoverImageUploader = ({
       toast({ title: "File too large", description: "Cover image must be under 5MB.", variant: "destructive" });
       return;
     }
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const uploadBlob = async (blob: Blob, previewUrl: string) => {
+    if (!userId) return;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: upErr } = await supabase.storage.from(COVER_BUCKET).upload(path, file, {
+      const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const { error: upErr } = await supabase.storage.from(COVER_BUCKET).upload(path, blob, {
         cacheControl: "3600",
         upsert: false,
-        contentType: file.type,
+        contentType: "image/jpeg",
       });
       if (upErr) throw upErr;
       const { data: signed, error: sErr } = await supabase.storage
@@ -382,7 +391,9 @@ const CoverImageUploader = ({
         .createSignedUrl(path, SIGNED_URL_TTL);
       if (sErr) throw sErr;
       onChange(signed.signedUrl);
-      toast({ title: "Image uploaded" });
+      URL.revokeObjectURL(previewUrl);
+      setCropSrc(null);
+      toast({ title: "Cover image saved" });
     } catch (e: any) {
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
     } finally {
@@ -408,7 +419,7 @@ const CoverImageUploader = ({
       ) : (
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
+          onClick={openFile}
           disabled={uploading}
           className="w-full aspect-video rounded-lg border-2 border-dashed border-border bg-muted/40 hover:bg-muted/70 hover:border-primary/50 transition flex flex-col items-center justify-center gap-2 text-muted-foreground"
         >
@@ -421,32 +432,21 @@ const CoverImageUploader = ({
             <>
               <ImageIcon className="h-8 w-8" />
               <span className="text-sm font-medium">Click to upload a cover image</span>
-              <span className="text-xs">PNG, JPG or WebP up to 5MB</span>
+              <span className="text-xs">PNG, JPG or WebP up to 5MB · crop before saving</span>
             </>
           )}
         </button>
       )}
 
       <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="gap-2"
-        >
+        <Button type="button" variant="outline" size="sm" onClick={openFile} disabled={uploading} className="gap-2">
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-          {value ? "Replace image" : "Upload image"}
+          {value ? "Replace & crop" : "Upload & crop"}
         </Button>
         <span className="text-xs text-muted-foreground">or paste a URL</span>
       </div>
 
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="https://…"
-      />
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://…" />
 
       <input
         ref={inputRef}
@@ -455,8 +455,18 @@ const CoverImageUploader = ({
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) handleFile(file);
+          if (file) handleFilePicked(file);
         }}
+      />
+
+      <CoverImageCropDialog
+        open={!!cropSrc}
+        imageSrc={cropSrc}
+        onCancel={() => {
+          setCropSrc(null);
+          if (inputRef.current) inputRef.current.value = "";
+        }}
+        onConfirm={uploadBlob}
       />
     </div>
   );
