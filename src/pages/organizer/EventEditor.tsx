@@ -15,6 +15,14 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { slugify, formatMoney, formatDateTime } from "@/lib/format";
 
+// Convert an ISO/UTC timestamp into the "YYYY-MM-DDTHH:mm" string that
+// <input type="datetime-local"> expects, expressed in the user's LOCAL timezone.
+const toLocalInput = (iso: string) => {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 const EventEditor = () => {
   const { id } = useParams();
   const isNew = id === "new";
