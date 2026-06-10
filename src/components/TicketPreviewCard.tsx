@@ -18,6 +18,7 @@ const cleanFilePart = (value: string) => value.replace(/[^a-z0-9-]+/gi, "-").rep
 
 const TicketPreviewCard = ({ ticket, event, order, actions, showDownload = true }: TicketPreviewCardProps) => {
   const ticketRef = useRef<HTMLDivElement>(null);
+  const [downloading, setDownloading] = useState<"png" | "html" | null>(null);
   const tierName = ticket.ticket_tiers?.name || ticket.tier_name || "Event Ticket";
   const venue = event?.venue || event?.city || "TBA";
   const holderEmail = ticket.holder_email || order?.buyer_email;
