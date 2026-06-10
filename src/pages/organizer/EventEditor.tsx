@@ -142,8 +142,12 @@ const EventEditor = () => {
                   <Textarea rows={5} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Tell people what to expect…" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Cover image URL</Label>
-                  <Input value={form.cover_image_url} onChange={(e) => setForm({ ...form, cover_image_url: e.target.value })} placeholder="https://…" />
+                  <Label>Cover image</Label>
+                  <CoverImageUploader
+                    value={form.cover_image_url}
+                    onChange={(url) => setForm({ ...form, cover_image_url: url })}
+                    userId={user?.id}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Venue</Label><Input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} placeholder="Kampala Serena Hotel" /></div>
