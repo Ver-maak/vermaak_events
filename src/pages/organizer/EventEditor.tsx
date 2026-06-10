@@ -221,6 +221,57 @@ const EventEditor = () => {
               {!isNew && form.status === "published" && (
                 <Button variant="outline" onClick={() => setStatus.mutate("draft")}>Unpublish</Button>
               )}
+              {!isNew && (
+                <AlertDialog open={deleteOpen} onOpenChange={(o) => { setDeleteOpen(o); if (!o) setConfirmText(""); }}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="gap-2 ml-auto"><Trash2 className="h-4 w-4" />Delete event</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                        <Trash2 className="h-5 w-5" /> Permanently delete this event?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription asChild>
+                        <div className="space-y-3 pt-1">
+                          <p>
+                            This will <strong>permanently delete</strong> <span className="font-semibold text-foreground">"{form.title}"</span> along with:
+                          </p>
+                          <ul className="list-disc pl-5 text-sm space-y-1">
+                            <li>All ticket tiers</li>
+                            <li>All orders and payment intents</li>
+                            <li>All issued tickets and check-in history</li>
+                          </ul>
+                          <p className="text-destructive font-medium">
+                            This action cannot be undone.
+                          </p>
+                          <div className="space-y-1.5 pt-1">
+                            <Label htmlFor="confirm-delete" className="text-xs">
+                              Type <code className="px-1 py-0.5 rounded bg-muted text-foreground">DELETE</code> to confirm
+                            </Label>
+                            <Input
+                              id="confirm-delete"
+                              value={confirmText}
+                              onChange={(e) => setConfirmText(e.target.value)}
+                              placeholder="DELETE"
+                              autoComplete="off"
+                            />
+                          </div>
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={del.isPending}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={confirmText !== "DELETE" || del.isPending}
+                        onClick={(e) => { e.preventDefault(); del.mutate(); }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {del.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting…</> : "Delete event"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           </TabsContent>
 
