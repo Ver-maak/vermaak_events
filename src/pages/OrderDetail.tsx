@@ -173,7 +173,7 @@ const OrderDetail = () => {
 
         <div>
           <h2 className="text-lg font-semibold mb-3">Your tickets ({(order as any).tickets?.length || 0})</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {(order as any).tickets?.map((t: any) => (
               <TicketPreviewCard
                 key={t.id}

@@ -125,10 +125,11 @@ const TicketPreviewCard = ({ ticket, event, order, actions, showDownload = true 
             </div>
 
             <div className="mx-auto text-center">
-              <div className="rounded-lg border border-border p-3" style={{ backgroundColor: "hsl(var(--ticket-qr-background))" }}>
-                <QRCodeSVG value={ticket.code} size={156} bgColor="hsl(var(--ticket-qr-background))" fgColor="hsl(var(--ticket-qr-foreground))" />
+              <div className="rounded-lg border border-border p-3" style={{ backgroundColor: "#ffffff" }}>
+                <QRCodeSVG value={ticket.code} size={168} bgColor="#ffffff" fgColor="#0f172a" level="H" includeMargin />
               </div>
-              <p className="font-mono text-xs mt-2 text-muted-foreground">Scan at check-in</p>
+              <p className="font-mono text-xs mt-2 text-muted-foreground break-all">{ticket.code}</p>
+              <p className="font-mono text-[10px] text-muted-foreground">Scan at check-in</p>
             </div>
           </div>
 
