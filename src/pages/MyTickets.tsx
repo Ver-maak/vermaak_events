@@ -62,12 +62,7 @@ const MyTickets = () => {
                       </div>
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-semibold">{formatMoney(Number(o.total_amount), o.currency)}</p>
-                        <div className="flex items-center gap-2">
-                          {o.status === "pending" && Number(o.total_amount) > 0 && (
-                            <Link to={`/dashboard/orders/${o.id}`}><Button size="sm" className="gap-1">Complete payment</Button></Link>
-                          )}
-                          <Link to={`/dashboard/orders/${o.id}`}><Button size="sm" variant="outline" className="gap-1">View tickets <ArrowRight className="h-3.5 w-3.5" /></Button></Link>
-                        </div>
+                        <Link to={`/dashboard/orders/${o.id}`}><Button size="sm" variant="outline" className="gap-1">View tickets <ArrowRight className="h-3.5 w-3.5" /></Button></Link>
                       </div>
                     </div>
                   </div>
