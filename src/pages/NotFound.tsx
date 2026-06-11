@@ -1,12 +1,21 @@
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useLocation, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getLastRoute } from "@/components/RouteMemory";
 
 const NotFound = () => {
   const location = useLocation();
+  const [redirectTo] = useState<string | null>(() => {
+    const last = getLastRoute();
+    return last && last !== location.pathname + location.search ? last : null;
+  });
 
   useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
-  }, [location.pathname]);
+    if (!redirectTo) {
+      console.error("404 Error: User attempted to access non-existent route:", location.pathname);
+    }
+  }, [location.pathname, redirectTo]);
+
+  if (redirectTo) return <Navigate to={redirectTo} replace />;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted">
