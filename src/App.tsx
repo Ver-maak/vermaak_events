@@ -55,6 +55,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <RouteMemory />
+            <PostLoginRedirect />
             <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
