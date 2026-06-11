@@ -9,6 +9,7 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { formatDateTime } from "@/lib/format";
 import EmptyState from "@/components/EmptyState";
 import { useAuth } from "@/lib/auth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Browse = () => {
   const { session } = useAuth();
@@ -39,6 +40,7 @@ const Browse = () => {
             <span className="hidden sm:inline text-[11px] text-muted-foreground ml-1">by Vermaak</span>
           </Link>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {session ? <Link to="/dashboard"><Button variant="outline" size="sm">Dashboard</Button></Link>
               : <Link to="/auth"><Button size="sm">Sign in</Button></Link>}
           </div>
