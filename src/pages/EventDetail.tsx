@@ -20,14 +20,25 @@ const EventDetail = () => {
   const { slug } = useParams();
   const { session, profile, user } = useAuth();
   const navigate = useNavigate();
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [buyerName, setBuyerName] = useState(profile?.full_name || "");
-  const [buyerEmail, setBuyerEmail] = useState(profile?.email || "");
-  const [buyerPhone, setBuyerPhone] = useState("");
+  const stateKey = slug ? `es:checkout-state:${slug}` : null;
+
+  // Hydrate any previously-saved checkout state (selected ticket quantities,
+  // phone number, buyer info) so the user lands back exactly where they were
+  // after returning from the magic-link sign-in.
+  const saved = (() => {
+    if (!stateKey) return null;
+    try { return JSON.parse(sessionStorage.getItem(stateKey) || "null"); } catch { return null; }
+  })();
+
+  const [quantities, setQuantities] = useState<Record<string, number>>(saved?.quantities || {});
+  const [buyerName, setBuyerName] = useState(saved?.buyerName || profile?.full_name || "");
+  const [buyerEmail, setBuyerEmail] = useState(saved?.buyerEmail || profile?.email || "");
+  const [buyerPhone, setBuyerPhone] = useState(saved?.buyerPhone || "");
   const [momoOpen, setMomoOpen] = useState(false);
   const [attendeeOpen, setAttendeeOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [pendingIntentId, setPendingIntentId] = useState<string | null>(null);
+  const [resumeStep, setResumeStep] = useState<string | null>(saved?.step || null);
 
   // Once the buyer returns from the magic-link sign-in, sync their name/email
   // into the checkout form so they don't have to re-type it.
@@ -36,6 +47,22 @@ const EventDetail = () => {
     if (profile?.email && !buyerEmail) setBuyerEmail(profile.email);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.full_name, profile?.email]);
+
+  // Persist checkout state on every change so a sign-in round-trip can restore it.
+  useEffect(() => {
+    if (!stateKey) return;
+    const totalQ = Object.values(quantities).reduce((s, n) => s + n, 0);
+    if (totalQ === 0 && !buyerPhone) {
+      try { sessionStorage.removeItem(stateKey); } catch {}
+      return;
+    }
+    try {
+      sessionStorage.setItem(stateKey, JSON.stringify({
+        quantities, buyerName, buyerEmail, buyerPhone, step: resumeStep,
+      }));
+    } catch {}
+  }, [stateKey, quantities, buyerName, buyerEmail, buyerPhone, resumeStep]);
+
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", slug],
@@ -107,6 +134,7 @@ const EventDetail = () => {
       return orderId as string;
     },
     onSuccess: (orderId) => {
+      if (stateKey) { try { sessionStorage.removeItem(stateKey); } catch {} }
       if (total === 0) {
         toast({ title: "Tickets confirmed!", description: "Free order processed." });
         navigate(`/dashboard/orders/${orderId}`);
@@ -134,6 +162,7 @@ const EventDetail = () => {
       _items: items as any,
     });
     if (error) throw error;
+    if (stateKey) { try { sessionStorage.removeItem(stateKey); } catch {} }
     setAttendeeOpen(false);
     if (total === 0) {
       toast({ title: "Tickets confirmed!", description: "Free order processed." });
@@ -145,15 +174,35 @@ const EventDetail = () => {
   };
 
   const startCheckout = () => {
-    if (!session) { navigate("/auth"); return; }
+    if (!session) {
+      // Remember the next step so we resume here after sign-in.
+      setResumeStep(isRotaract ? "attendee" : "pay");
+      return;
+    }
     if (totalQty < 1) return;
-    if (isRotaract) { setAttendeeOpen(true); return; }
+    if (isRotaract) { setResumeStep("attendee"); setAttendeeOpen(true); return; }
     if (!buyerName || !buyerEmail) {
       toast({ title: "Missing info", description: "Name and email required", variant: "destructive" });
       return;
     }
+    setResumeStep("pay");
     checkout.mutate();
   };
+
+  // Auto-resume the saved checkout step once the user returns signed-in.
+  useEffect(() => {
+    if (!session || !resumeStep || !tiers) return;
+    if (totalQty < 1) return;
+    if (resumeStep === "attendee" && !attendeeOpen && !momoOpen) {
+      setAttendeeOpen(true);
+    } else if (resumeStep === "pay" && !isRotaract && !momoOpen && buyerName && buyerEmail) {
+      checkout.mutate();
+    }
+    // Only auto-trigger once per resume — clear the marker after acting.
+    setResumeStep(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, resumeStep, tiers]);
+
 
   const handleMomoConfirm = async ({ phone }: { method: string; phone: string; reference: string }) => {
     if (!pendingOrderId) throw new Error("No pending order");
