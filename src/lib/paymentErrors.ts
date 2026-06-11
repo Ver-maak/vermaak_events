@@ -49,6 +49,12 @@ const MAP: Array<{ test: RegExp; kind: PaymentFailureKind; title: string; descri
     description: "The payment provider is temporarily unreachable. Try again in a moment.", retryable: true },
 ];
 
+/** Pulls a human-useful failure reason out of a provider's raw payload. */
+export function extractProviderReason(raw: unknown): string | undefined {
+  const r = raw as { data?: { failureReason?: string }; failureReason?: string; error?: string; message?: string } | null | undefined;
+  return r?.data?.failureReason || r?.failureReason || r?.error || r?.message || undefined;
+}
+
 export function explainPaymentError(input: unknown): FriendlyFailure {
   const msg = typeof input === "string" ? input : (input as { message?: string })?.message || "";
   for (const m of MAP) {
