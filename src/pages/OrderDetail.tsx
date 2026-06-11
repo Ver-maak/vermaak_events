@@ -31,7 +31,7 @@ const OrderDetail = () => {
     queryKey: ["order-detail", id],
     enabled: !!id,
     queryFn: async () => {
-      const { data } = await supabase.from("orders").select("*,events(title,starts_at,venue,city,cover_image_url),tickets(*,ticket_tiers(name))").eq("id", id!).maybeSingle();
+      const { data } = await supabase.from("orders").select("*,events(title,slug,starts_at,venue,city,cover_image_url),tickets(*,ticket_tiers(name))").eq("id", id!).maybeSingle();
       return data;
     },
   });
