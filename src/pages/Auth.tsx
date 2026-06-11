@@ -21,6 +21,15 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<LoginError | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { session } = useAuth();
+  const from = (location.state as any)?.from as string | undefined;
+  const redirectTarget = from && !from.startsWith("/auth") ? from : "/dashboard";
+
+  useEffect(() => {
+    if (session) navigate(redirectTarget, { replace: true });
+  }, [session, redirectTarget, navigate]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
