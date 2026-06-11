@@ -34,9 +34,13 @@ const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { session, loading, profile } = useAuth();
+  const location = useLocation();
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-pulse text-muted-foreground">Loading...</div></div>;
-  if (!session) return <Navigate to="/auth" replace />;
-  if (profile?.must_change_password) return <Navigate to="/change-password" replace />;
+  if (!session) {
+    const from = location.pathname + location.search + location.hash;
+    return <Navigate to="/auth" replace state={{ from }} />;
+  }
+  if (profile?.must_change_password) return <Navigate to="/change-password" replace state={{ from: location.pathname + location.search + location.hash }} />;
   return <>{children}</>;
 };
 
