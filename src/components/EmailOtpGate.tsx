@@ -37,6 +37,9 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "" }: Props) => 
       return;
     }
     setBusy(true);
+    const returnTo = window.location.pathname + window.location.search + window.location.hash;
+    try { sessionStorage.setItem("es:post-login-redirect", returnTo); } catch {}
+    try { localStorage.setItem("es:post-login-redirect", returnTo); } catch {}
     const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
       options: {

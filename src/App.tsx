@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import Index from "./pages/Index";
 import { RouteMemory } from "@/components/RouteMemory";
+import { PostLoginRedirect } from "@/components/PostLoginRedirect";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -54,6 +55,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <RouteMemory />
+            <PostLoginRedirect />
             <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
