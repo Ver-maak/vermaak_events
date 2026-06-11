@@ -144,35 +144,27 @@ const MoMoPaymentDialog = ({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" />Mobile Money Payment</DialogTitle>
-          <DialogDescription>Review your total below, then approve the prompt on your phone.</DialogDescription>
         </DialogHeader>
 
         {stage === "form" && (
           <div className="space-y-4">
             <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tickets subtotal</span>
+                <span className="text-muted-foreground">Subtotal</span>
                 <span className="font-medium">{formatMoney(amount, currency)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Processing fee
-                  {tierLabel && <span className="block text-[10px] opacity-70">{tierLabel}</span>}
-                </span>
+                <span className="text-muted-foreground">Fee</span>
                 <span className="font-medium">{formatMoney(processingFee, currency)}</span>
               </div>
               <div className="h-px bg-border my-1" />
               <div className="flex justify-between">
-                <span className="font-semibold">Total to pay</span>
+                <span className="font-semibold">Total</span>
                 <span className="font-bold text-primary">{formatMoney(grandTotal, currency)}</span>
               </div>
-              <div data-testid="fee-breakdown-confirm">
-                <FeeBreakdown amount={amount} currency={currency} organizationId={organizationId} />
-              </div>
-              <p className="text-[10px] text-muted-foreground pt-1">This is the exact amount that will be deducted from your mobile money wallet.</p>
             </div>
             <div className="space-y-2">
-              <Label>Choose provider</Label>
+              <Label>Provider</Label>
               <RadioGroup value={provider} onValueChange={(v) => setProvider(v as MoMoProvider)} className="grid grid-cols-2 gap-2">
                 <Label htmlFor="mtn" className={`border rounded-lg p-3 cursor-pointer flex items-center gap-2 ${provider==="mtn_momo"?"border-primary bg-primary/5":"border-border"}`}>
                   <RadioGroupItem value="mtn_momo" id="mtn" />
@@ -185,9 +177,8 @@ const MoMoPaymentDialog = ({
               </RadioGroup>
             </div>
             <div className="space-y-2">
-              <Label>Mobile money number</Label>
+              <Label>Phone number</Label>
               <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+256 7XX XXX XXX" />
-              <p className="text-[11px] text-muted-foreground">You'll receive a prompt on this number to enter your PIN.</p>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button className="w-full" onClick={runFlow}>Pay {formatMoney(grandTotal, currency)}</Button>
@@ -198,22 +189,20 @@ const MoMoPaymentDialog = ({
           <div className="py-8 text-center space-y-3">
             <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
             <p className="font-medium">Sending request to {phone}…</p>
-            <p className="text-sm text-muted-foreground">Initiating {providerLabel}</p>
           </div>
         )}
 
         {stage === "waiting" && (
           <div className="space-y-4">
-            <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 space-y-2">
-              <p className="text-sm font-medium flex items-center gap-2">
-                <Smartphone className="h-4 w-4 text-primary animate-pulse" />Check your phone
-              </p>
+            <div className="rounded-lg border border-primary/40 bg-primary/5 p-4 space-y-2 text-center">
+              <Smartphone className="h-6 w-6 text-primary mx-auto animate-pulse" />
+              <p className="text-sm font-medium">Check your phone</p>
               <p className="text-xs text-muted-foreground">
-                A {providerLabel} prompt for <span className="font-medium text-foreground">{formatMoney(grandTotal, currency)}</span> (incl. {formatMoney(processingFee, currency)} fee) has been sent to <span className="font-medium text-foreground">{phone}</span>. Enter your PIN to authorize.
+                Enter your PIN to pay <span className="font-medium text-foreground">{formatMoney(grandTotal, currency)}</span>
               </p>
-              <p className="text-xs text-primary">Waiting for confirmation… ({countdown}s)</p>
+              <p className="text-xs text-primary">Waiting… {countdown}s</p>
             </div>
-            <Button variant="outline" className="w-full" onClick={cancel}>Cancel payment</Button>
+            <Button variant="outline" className="w-full" onClick={cancel}>Cancel</Button>
           </div>
         )}
 
