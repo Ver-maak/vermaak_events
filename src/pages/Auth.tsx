@@ -51,7 +51,7 @@ const Auth = () => {
           await supabase.from("user_roles").insert({ user_id: data.user.id, role: "attendee" as any });
         }
         toast({ title: "Welcome to EventSuite!", description: "Your account is ready." });
-        if (data.session) navigate("/dashboard");
+        if (data.session) navigate(redirectTarget, { replace: true });
         else setIsLogin(true);
       }
     } catch (err: any) {
