@@ -296,9 +296,6 @@ const EventDetail = () => {
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
                           Processing fee
-                          {feeQuote?.tierLabel && total > 0 && (
-                            <span className="block text-[10px] opacity-70">{feeQuote.tierLabel}</span>
-                          )}
                         </span>
                         <span className="font-medium">
                           {total === 0

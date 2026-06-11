@@ -80,13 +80,7 @@ const FeeBreakdown = ({ amount, currency, organizationId }: FeeBreakdownProps) =
       )}
 
       <div className="flex justify-between items-center">
-        <span className="text-muted-foreground flex items-center gap-1">
-          Transaction Fee
-          <Tooltip>
-            <TooltipTrigger><Info className="h-3 w-3" /></TooltipTrigger>
-            <TooltipContent className="max-w-xs">{fee.tier_label}</TooltipContent>
-          </Tooltip>
-        </span>
+        <span className="text-muted-foreground">Transaction Fee</span>
         <span className="text-warning font-medium">{formatCurrency(fee.fee, currency)}</span>
       </div>
 
