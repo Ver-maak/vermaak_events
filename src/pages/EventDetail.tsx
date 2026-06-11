@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, MapPin, Ticket, Minus, Plus, ArrowLeft } from "lucide-react";
+import { Calendar, MapPin, Ticket, Minus, Plus, ArrowLeft, Share2 } from "lucide-react";
 import { formatMoney, formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
