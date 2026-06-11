@@ -38,7 +38,7 @@ const empty: FormState = {
   name: "Swarmbyte Payments",
   enabled: false,
   mode: "sandbox",
-  base_url: "https://core.swarmbyte.com",
+  base_url: "https://stg-api.swarmbyte.com",
   callback_url: "",
   redirect_success_url: "",
   redirect_cancel_url: "",

@@ -105,7 +105,7 @@ export function timingSafeEqual(a: string, b: string) {
 // separate sandbox host — the merchant dashboard provisions sandbox credentials
 // against the same host).
 
-const SWARMBYTE_DEFAULT_BASE = "https://core.swarmbyte.com";
+const SWARMBYTE_DEFAULT_BASE = "https://stg-api.swarmbyte.com";
 
 type CachedToken = { token: string; exp: number };
 const tokenCache = new Map<string, CachedToken>();
