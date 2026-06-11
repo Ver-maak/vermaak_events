@@ -172,15 +172,35 @@ const EventDetail = () => {
   };
 
   const startCheckout = () => {
-    if (!session) { navigate("/auth"); return; }
+    if (!session) {
+      // Remember the next step so we resume here after sign-in.
+      setResumeStep(isRotaract ? "attendee" : "pay");
+      return;
+    }
     if (totalQty < 1) return;
-    if (isRotaract) { setAttendeeOpen(true); return; }
+    if (isRotaract) { setResumeStep("attendee"); setAttendeeOpen(true); return; }
     if (!buyerName || !buyerEmail) {
       toast({ title: "Missing info", description: "Name and email required", variant: "destructive" });
       return;
     }
+    setResumeStep("pay");
     checkout.mutate();
   };
+
+  // Auto-resume the saved checkout step once the user returns signed-in.
+  useEffect(() => {
+    if (!session || !resumeStep || !tiers) return;
+    if (totalQty < 1) return;
+    if (resumeStep === "attendee" && !attendeeOpen && !momoOpen) {
+      setAttendeeOpen(true);
+    } else if (resumeStep === "pay" && !isRotaract && !momoOpen && buyerName && buyerEmail) {
+      checkout.mutate();
+    }
+    // Only auto-trigger once per resume — clear the marker after acting.
+    setResumeStep(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, resumeStep, tiers]);
+
 
   const handleMomoConfirm = async ({ phone }: { method: string; phone: string; reference: string }) => {
     if (!pendingOrderId) throw new Error("No pending order");
