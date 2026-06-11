@@ -40,7 +40,7 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (error) throw error;
-        navigate("/dashboard");
+        navigate(redirectTarget, { replace: true });
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail, password,
