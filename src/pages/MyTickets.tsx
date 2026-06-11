@@ -60,9 +60,16 @@ const MyTickets = () => {
                           <span className="flex items-center gap-1"><Ticket className="h-3.5 w-3.5" />{o.tickets?.length || 0} ticket{o.tickets?.length === 1 ? "" : "s"}</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
                         <p className="font-semibold">{formatMoney(Number(o.total_amount), o.currency)}</p>
-                        <Link to={`/dashboard/orders/${o.id}`}><Button size="sm" variant="outline" className="gap-1">View tickets <ArrowRight className="h-3.5 w-3.5" /></Button></Link>
+                        <div className="flex items-center gap-2">
+                          {o.events?.slug && (
+                            <Link to={`/events/${o.events.slug}`}>
+                              <Button size="sm" variant="ghost" className="gap-1">Buy more</Button>
+                            </Link>
+                          )}
+                          <Link to={`/dashboard/orders/${o.id}`}><Button size="sm" variant="outline" className="gap-1">View tickets <ArrowRight className="h-3.5 w-3.5" /></Button></Link>
+                        </div>
                       </div>
                     </div>
                   </div>

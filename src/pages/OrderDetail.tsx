@@ -8,7 +8,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Calendar, MapPin, Trash2, CreditCard } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Trash2, CreditCard, Plus } from "lucide-react";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
@@ -31,7 +31,7 @@ const OrderDetail = () => {
     queryKey: ["order-detail", id],
     enabled: !!id,
     queryFn: async () => {
-      const { data } = await supabase.from("orders").select("*,events(title,starts_at,venue,city,cover_image_url),tickets(*,ticket_tiers(name))").eq("id", id!).maybeSingle();
+      const { data } = await supabase.from("orders").select("*,events(title,slug,starts_at,venue,city,cover_image_url),tickets(*,ticket_tiers(name))").eq("id", id!).maybeSingle();
       return data;
     },
   });
@@ -166,6 +166,17 @@ const OrderDetail = () => {
                   <CreditCard className="h-4 w-4" />
                   Complete payment{feeQuote ? ` — ${formatMoney(feeQuote.grandTotal, order.currency)}` : ""}
                 </Button>
+              </div>
+            )}
+
+            {order.status === "paid" && (order as any).events?.slug && (
+              <div className="pt-3 border-t border-border mt-3">
+                <Link to={`/events/${(order as any).events.slug}`}>
+                  <Button variant="outline" className="w-full gap-2">
+                    <Plus className="h-4 w-4" />
+                    Buy more tickets for this event
+                  </Button>
+                </Link>
               </div>
             )}
           </CardContent>
