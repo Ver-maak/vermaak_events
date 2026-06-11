@@ -134,6 +134,7 @@ const EventDetail = () => {
       return orderId as string;
     },
     onSuccess: (orderId) => {
+      if (stateKey) { try { sessionStorage.removeItem(stateKey); } catch {} }
       if (total === 0) {
         toast({ title: "Tickets confirmed!", description: "Free order processed." });
         navigate(`/dashboard/orders/${orderId}`);
