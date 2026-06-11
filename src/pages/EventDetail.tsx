@@ -249,7 +249,32 @@ const EventDetail = () => {
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-4">
           <Link to="/events" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Back to events</Link>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={async () => {
+                const url = `${window.location.origin}/events/${event.slug}`;
+                const shareData = { title: event.title, text: `Check out ${event.title}`, url };
+                try {
+                  if (navigator.share && /mobile|android|iphone/i.test(navigator.userAgent)) {
+                    await navigator.share(shareData);
+                  } else {
+                    await navigator.clipboard.writeText(url);
+                    toast({ title: "Link copied!", description: "Share it anywhere you like." });
+                  }
+                } catch (e: any) {
+                  if (e?.name !== "AbortError") {
+                    toast({ title: "Couldn't share", description: e?.message || "Try again", variant: "destructive" });
+                  }
+                }
+              }}
+            >
+              <Share2 className="h-4 w-4" />Share
+            </Button>
+            <ThemeToggle />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
