@@ -33,11 +33,12 @@ const CheckIn = () => {
       const scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
       await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 },
-        (decoded) => {
+        async (decoded) => {
           const now = Date.now();
           if (lastScanRef.current.code === decoded && now - lastScanRef.current.t < 3000) return;
           lastScanRef.current = { code: decoded, t: now };
-          submit(decoded);
+          await submit(decoded);
+          await stopScan();
         }, () => {});
     } catch (e: any) {
       setScanning(false);
