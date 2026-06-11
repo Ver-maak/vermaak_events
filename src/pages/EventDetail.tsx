@@ -331,10 +331,7 @@ const EventDetail = () => {
                     {!session ? (
                       <EmailOtpGate
                         defaultEmail={buyerEmail}
-                        onVerified={(email) => {
-                          setBuyerEmail(email);
-                          if (!buyerName) setBuyerName(email.split("@")[0]);
-                        }}
+                        defaultName={buyerName}
                       />
                     ) : (
                       <>
