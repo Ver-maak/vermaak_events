@@ -13,6 +13,8 @@ import { toast } from "@/hooks/use-toast";
 import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
 import AttendeeInfoDialog, { type AttendeeHolder } from "@/components/AttendeeInfoDialog";
 import { getFunctionErrorMessage, extractProviderReason } from "@/lib/paymentErrors";
+import { EmailOtpGate } from "@/components/EmailOtpGate";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const EventDetail = () => {
   const { slug } = useParams();
@@ -237,7 +239,10 @@ const EventDetail = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6">
-        <Link to="/events" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"><ArrowLeft className="h-4 w-4" />Back to events</Link>
+        <div className="flex items-center justify-between mb-4">
+          <Link to="/events" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />Back to events</Link>
+          <ThemeToggle />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
@@ -324,7 +329,13 @@ const EventDetail = () => {
                     </div>
 
                     {!session ? (
-                      <Button className="w-full" onClick={() => navigate("/auth")}>Sign in to checkout</Button>
+                      <EmailOtpGate
+                        defaultEmail={buyerEmail}
+                        onVerified={(email) => {
+                          setBuyerEmail(email);
+                          if (!buyerName) setBuyerName(email.split("@")[0]);
+                        }}
+                      />
                     ) : (
                       <>
                         {!isRotaract && (
