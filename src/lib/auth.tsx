@@ -69,6 +69,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  useIdleLogout(!!session);
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
