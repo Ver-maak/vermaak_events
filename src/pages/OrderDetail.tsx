@@ -114,7 +114,7 @@ const OrderDetail = () => {
         return;
       }
       if (verified?.status === "failed" || verified?.status === "cancelled") {
-        const reason = (verified?.result as any)?.error || (verified?.raw as any)?.message;
+        const reason = (verified?.result as any)?.error || extractProviderReason(verified?.raw);
         throw new Error(reason ? `Payment ${verified.status}: ${reason}` : `Payment ${verified.status}`);
       }
     }

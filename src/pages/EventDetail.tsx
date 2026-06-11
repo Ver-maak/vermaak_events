@@ -200,7 +200,7 @@ const EventDetail = () => {
         return;
       }
       if (verified?.status === "failed" || verified?.status === "cancelled") {
-        const reason = (verified?.result as any)?.error || (verified?.raw as any)?.message;
+        const reason = (verified?.result as any)?.error || extractProviderReason(verified?.raw);
         throw new Error(reason ? `Payment ${verified.status}: ${reason}` : `Payment ${verified.status}`);
       }
       const { data: intent } = await supabase
@@ -215,7 +215,7 @@ const EventDetail = () => {
         return;
       }
       if (status === "failed" || status === "cancelled") {
-        const reason = (intent?.raw as any)?.error || (intent?.raw as any)?.message;
+        const reason = extractProviderReason(intent?.raw);
         throw new Error(reason ? `Payment ${status}: ${reason}` : `Payment ${status}`);
       }
     }
