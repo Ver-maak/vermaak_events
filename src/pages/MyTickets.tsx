@@ -19,6 +19,7 @@ const MyTickets = () => {
         .from("orders")
         .select("*,events(title,slug,starts_at,venue,city,cover_image_url),tickets(id,code,holder_name,checked_in_at)")
         .eq("buyer_id", user!.id)
+        .eq("status", "paid")
         .order("created_at", { ascending: false });
       return data || [];
     },
