@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { useIdleLogout } from "@/hooks/useIdleLogout";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -67,6 +68,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useIdleLogout(!!session);
 
   const signOut = async () => {
     await supabase.auth.signOut();

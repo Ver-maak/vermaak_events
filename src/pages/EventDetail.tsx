@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,14 @@ const EventDetail = () => {
   const [attendeeOpen, setAttendeeOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [pendingIntentId, setPendingIntentId] = useState<string | null>(null);
+
+  // Once the buyer returns from the magic-link sign-in, sync their name/email
+  // into the checkout form so they don't have to re-type it.
+  useEffect(() => {
+    if (profile?.full_name && !buyerName) setBuyerName(profile.full_name);
+    if (profile?.email && !buyerEmail) setBuyerEmail(profile.email);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.full_name, profile?.email]);
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", slug],
@@ -331,10 +339,7 @@ const EventDetail = () => {
                     {!session ? (
                       <EmailOtpGate
                         defaultEmail={buyerEmail}
-                        onVerified={(email) => {
-                          setBuyerEmail(email);
-                          if (!buyerName) setBuyerName(email.split("@")[0]);
-                        }}
+                        defaultName={buyerName}
                       />
                     ) : (
                       <>
