@@ -53,13 +53,8 @@ const EventDetail = () => {
       return data;
     },
   });
-  const isRotaract = !!(
-    (organization?.slug?.toLowerCase().includes("rotaract")) ||
-    (organization?.name?.toLowerCase().includes("rotaract")) ||
-    (event?.slug?.toLowerCase().includes("rotaract")) ||
-    (event?.title?.toLowerCase().includes("rotaract")) ||
-    (event?.title?.toLowerCase().includes("trf"))
-  );
+  // Always classify attendees (Rotarian / Rotaractor / Guest) for every event.
+  const isRotaract = true;
 
   const setQty = (tierId: string, q: number) => setQuantities((p) => ({ ...p, [tierId]: Math.max(0, q) }));
 
