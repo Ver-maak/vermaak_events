@@ -41,6 +41,8 @@ const MAP: Array<{ test: RegExp; kind: PaymentFailureKind; title: string; descri
     description: "This order has already been completed. Refreshing your tickets…", retryable: false },
   { test: /network|fetch|connection|ENOTFOUND|ECONNRESET/i, kind: "network", title: "Network problem",
     description: "We couldn't reach the payment provider. Check your connection and try again.", retryable: true },
+  { test: /not configured|missing|credentials|wallet_address|api_key|api_secret|Payment Settings/i, kind: "provider_unavailable", title: "Payment provider not set up",
+    description: "Ask an admin to finish provider setup in Admin → Payment Settings, then try again.", retryable: false },
   { test: /provider|swarmbyte|disabled|502|503|504/i, kind: "provider_unavailable", title: "Provider unavailable",
     description: "The payment provider is temporarily unreachable. Try again in a moment.", retryable: true },
 ];
