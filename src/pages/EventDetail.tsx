@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
 import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
 import AttendeeInfoDialog, { type AttendeeHolder } from "@/components/AttendeeInfoDialog";
-import { getFunctionErrorMessage } from "@/lib/paymentErrors";
+import { getFunctionErrorMessage, extractProviderReason } from "@/lib/paymentErrors";
 
 const EventDetail = () => {
   const { slug } = useParams();

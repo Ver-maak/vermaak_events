@@ -15,7 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
 import TicketPreviewCard from "@/components/TicketPreviewCard";
 import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
-import { getFunctionErrorMessage } from "@/lib/paymentErrors";
+import { getFunctionErrorMessage, extractProviderReason } from "@/lib/paymentErrors";
 
 const OrderDetail = () => {
   const { id } = useParams();
