@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,15 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<LoginError | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { session } = useAuth();
+  const from = (location.state as any)?.from as string | undefined;
+  const redirectTarget = from && !from.startsWith("/auth") ? from : "/dashboard";
+
+  useEffect(() => {
+    if (session) navigate(redirectTarget, { replace: true });
+  }, [session, redirectTarget, navigate]);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +40,7 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
         if (error) throw error;
-        navigate("/dashboard");
+        navigate(redirectTarget, { replace: true });
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: normalizedEmail, password,
@@ -41,7 +51,7 @@ const Auth = () => {
           await supabase.from("user_roles").insert({ user_id: data.user.id, role: "attendee" as any });
         }
         toast({ title: "Welcome to EventSuite!", description: "Your account is ready." });
-        if (data.session) navigate("/dashboard");
+        if (data.session) navigate(redirectTarget, { replace: true });
         else setIsLogin(true);
       }
     } catch (err: any) {
