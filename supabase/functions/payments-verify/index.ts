@@ -26,8 +26,26 @@ Deno.serve(async (req) => {
       .single();
     if (ie || !intent) return json({ ok: false, error: "Payment attempt not found." });
     if ((intent as any).orders?.buyer_id !== userData.user.id) return json({ ok: false, error: "You can only check your own payment." });
-    if (intent.status === "success" || intent.status === "failed" || intent.status === "cancelled") {
+    if (intent.status === "success") {
       return json({ ok: true, status: intent.status, raw: intent.raw || {} });
+    }
+    if (intent.status === "failed" || intent.status === "cancelled") {
+      // Webhook payloads don't include failureReason — fetch it once from the
+      // provider's status endpoint so the buyer sees WHY the payment failed.
+      let raw = (intent.raw || {}) as Record<string, unknown>;
+      const hasReason = !!((raw as any)?.failureReason || (raw as any)?.data?.failureReason);
+      if (!hasReason && !String(intent.provider_ref).startsWith("pending:")) {
+        try {
+          const cfg = await loadProviderConfig(intent.provider);
+          const provider = getProvider(intent.provider);
+          const v = await provider.verify(cfg, intent.provider_ref);
+          if (v.raw) {
+            raw = v.raw as Record<string, unknown>;
+            await sb.from("payment_intents").update({ raw }).eq("id", intent.id);
+          }
+        } catch (_) { /* best effort enrichment only */ }
+      }
+      return json({ ok: true, status: intent.status, raw });
     }
     if (String(intent.provider_ref).startsWith("pending:")) {
       return json({ ok: true, status: "pending", raw: intent.raw || {} });

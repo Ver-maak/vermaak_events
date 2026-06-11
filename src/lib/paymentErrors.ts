@@ -23,6 +23,8 @@ export interface FriendlyFailure {
 }
 
 const MAP: Array<{ test: RegExp; kind: PaymentFailureKind; title: string; description: string; retryable: boolean }> = [
+  { test: /LOW_BALANCE|PAYEE_LIMIT|LIMIT_REACHED|NOT_ALLOWED/i, kind: "insufficient_funds", title: "Mobile money declined the charge",
+    description: "Your mobile money wallet has insufficient balance, has reached a transaction or daily limit, or isn't allowed to pay this amount. Top up or check your limits with your provider, then try again.", retryable: true },
   { test: /insufficient|balance|funds/i, kind: "insufficient_funds", title: "Insufficient balance",
     description: "Your mobile money wallet doesn't have enough funds. Top up and try again.", retryable: true },
   { test: /pin|incorrect|invalid pin|wrong pin/i, kind: "wrong_pin", title: "Wrong PIN entered",
@@ -46,6 +48,12 @@ const MAP: Array<{ test: RegExp; kind: PaymentFailureKind; title: string; descri
   { test: /provider|swarmbyte|disabled|502|503|504/i, kind: "provider_unavailable", title: "Provider unavailable",
     description: "The payment provider is temporarily unreachable. Try again in a moment.", retryable: true },
 ];
+
+/** Pulls a human-useful failure reason out of a provider's raw payload. */
+export function extractProviderReason(raw: unknown): string | undefined {
+  const r = raw as { data?: { failureReason?: string }; failureReason?: string; error?: string; message?: string } | null | undefined;
+  return r?.data?.failureReason || r?.failureReason || r?.error || r?.message || undefined;
+}
 
 export function explainPaymentError(input: unknown): FriendlyFailure {
   const msg = typeof input === "string" ? input : (input as { message?: string })?.message || "";

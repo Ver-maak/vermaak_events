@@ -15,7 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
 import TicketPreviewCard from "@/components/TicketPreviewCard";
 import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
-import { getFunctionErrorMessage } from "@/lib/paymentErrors";
+import { getFunctionErrorMessage, extractProviderReason } from "@/lib/paymentErrors";
 
 const OrderDetail = () => {
   const { id } = useParams();
@@ -114,7 +114,7 @@ const OrderDetail = () => {
         return;
       }
       if (verified?.status === "failed" || verified?.status === "cancelled") {
-        const reason = (verified?.result as any)?.error || (verified?.raw as any)?.message;
+        const reason = (verified?.result as any)?.error || extractProviderReason(verified?.raw);
         throw new Error(reason ? `Payment ${verified.status}: ${reason}` : `Payment ${verified.status}`);
       }
     }
