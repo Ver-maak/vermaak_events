@@ -162,6 +162,7 @@ const EventDetail = () => {
       _items: items as any,
     });
     if (error) throw error;
+    if (stateKey) { try { sessionStorage.removeItem(stateKey); } catch {} }
     setAttendeeOpen(false);
     if (total === 0) {
       toast({ title: "Tickets confirmed!", description: "Free order processed." });
