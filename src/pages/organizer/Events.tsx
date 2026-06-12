@@ -52,25 +52,39 @@ const OrganizerEvents = () => {
             <EmptyState icon={<Calendar className="h-5 w-5" />} title="No events yet" description="Create your first event in under a minute." action={<Link to="/dashboard/events/new"><Button>Create event</Button></Link>} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {events.map((e: any) => (
-                <Link key={e.id} to={`/dashboard/events/${e.id}`}>
-                  <Card className="overflow-hidden hover:shadow-elevated transition-shadow h-full">
-                    <div className="aspect-video bg-muted relative">
-                      {e.cover_image_url ? <img src={e.cover_image_url} alt={e.title} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full gradient-accent flex items-center justify-center"><Calendar className="h-10 w-10 text-white/60" /></div>}
-                      <span className={`absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase ${e.status === "published" ? "bg-success text-success-foreground" : e.status === "draft" ? "bg-muted-foreground/80 text-white" : "bg-warning text-warning-foreground"}`}>{e.status}</span>
-                    </div>
-                    <CardContent className="p-4">
-                      <p className="text-xs text-primary font-medium">{formatDateTime(e.starts_at)}</p>
-                      <h3 className="font-semibold line-clamp-1 mt-1">{e.title}</h3>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-                        <span className="flex items-center gap-1"><Ticket className="h-3 w-3" />{e.tickets?.[0]?.count || 0}</span>
-                        <span className="flex items-center gap-1"><Users className="h-3 w-3" />{e.orders?.[0]?.count || 0}</span>
+              {events.map((e: any) => {
+                const canManageAdmins = isSuper || e.organizer_id === user?.id;
+                return (
+                <div key={e.id} className="relative">
+                  <Link to={`/dashboard/events/${e.id}`}>
+                    <Card className="overflow-hidden hover:shadow-elevated transition-shadow h-full">
+                      <div className="aspect-video bg-muted relative">
+                        {e.cover_image_url ? <img src={e.cover_image_url} alt={e.title} className="w-full h-full object-cover" />
+                          : <div className="w-full h-full gradient-accent flex items-center justify-center"><Calendar className="h-10 w-10 text-white/60" /></div>}
+                        <span className={`absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full font-medium uppercase ${e.status === "published" ? "bg-success text-success-foreground" : e.status === "draft" ? "bg-muted-foreground/80 text-white" : "bg-warning text-warning-foreground"}`}>{e.status}</span>
                       </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+                      <CardContent className="p-4">
+                        <p className="text-xs text-primary font-medium">{formatDateTime(e.starts_at)}</p>
+                        <h3 className="font-semibold line-clamp-1 mt-1">{e.title}</h3>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                          <span className="flex items-center gap-1"><Ticket className="h-3 w-3" />{e.tickets?.[0]?.count || 0}</span>
+                          <span className="flex items-center gap-1"><Users className="h-3 w-3" />{e.orders?.[0]?.count || 0}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                  {canManageAdmins && (
+                    <Link
+                      to={`/dashboard/events/${e.id}?tab=admins`}
+                      className="absolute bottom-3 right-3 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-background/90 border border-border hover:bg-accent hover:text-accent-foreground transition-colors"
+                      onClick={(ev) => ev.stopPropagation()}
+                    >
+                      <Shield className="h-3 w-3" /> Admins
+                    </Link>
+                  )}
+                </div>
+                );
+              })}
             </div>
           )}
       </div>
