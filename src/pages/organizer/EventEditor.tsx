@@ -666,12 +666,19 @@ const AdminsPanel = ({ eventId }: { eventId: string }) => {
                 {admins.map((a: any) => (
                   <div key={a.id} className="flex items-center justify-between border border-border rounded-lg p-3">
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{a.profile?.full_name || a.invited_email || "User"}</p>
+                      <p className="font-medium truncate flex items-center gap-2">
+                        {a.profile?.full_name || a.invited_email || "User"}
+                        {!a.user_id && (
+                          <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">
+                            Pending signup
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
                         <Mail className="h-3 w-3" />{a.profile?.email || a.invited_email}
                       </p>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => revoke.mutate(a.user_id)} disabled={revoke.isPending}>
+                    <Button size="sm" variant="ghost" onClick={() => revoke.mutate(a.id)} disabled={revoke.isPending}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
