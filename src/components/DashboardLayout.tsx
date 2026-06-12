@@ -55,7 +55,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const sections = Array.from(new Set(navItems.map((i) => i.section)));
 
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
-  const roleLabel = isSuperAdmin ? "Super Admin" : isOrganizer ? "Organizer" : "Attendee";
+  const roleLabel = isSuperAdmin ? "Super Admin" : isOrganizer ? "Organizer" : isEventAdmin ? "Event Admin" : "Attendee";
 
   return (
     <div className="min-h-screen bg-background flex">
