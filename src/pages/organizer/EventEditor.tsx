@@ -165,8 +165,9 @@ const EventEditor = () => {
         {(() => {
           const isOwner = !!event && !!user && event.organizer_id === user.id;
           const canManage = isNew || isOwner || isSuperAdmin;
+          const initialTab = (searchParams.get("tab") === "admins" && canManage && !isNew) ? "admins" : "details";
           return (
-        <EventEditorTabs canManage={canManage && !isNew} isNew={isNew}>
+        <Tabs defaultValue={initialTab}>
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="tiers" disabled={isNew}>Tickets</TabsTrigger>
