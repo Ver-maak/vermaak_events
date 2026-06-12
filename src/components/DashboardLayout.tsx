@@ -15,13 +15,14 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 interface NavItem { label: string; href: string; icon: ReactNode; section?: string }
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
-  const { profile, roles, signOut } = useAuth();
+  const { profile, roles, adminEventIds, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isSuperAdmin = roles.includes("super_admin");
   const isOrganizer = roles.includes("organizer") || isSuperAdmin;
+  const isEventAdmin = adminEventIds.length > 0;
 
   const navItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-4 w-4" />, section: "Main" },
@@ -33,6 +34,10 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
       { label: "Check‑in", href: "/dashboard/check-in", icon: <QrCode className="h-4 w-4" />, section: "Organizer" },
       { label: "Analytics", href: "/dashboard/analytics", icon: <BarChart3 className="h-4 w-4" />, section: "Organizer" },
       { label: "Developer", href: "/dashboard/developer", icon: <Code2 className="h-4 w-4" />, section: "Organizer" },
+    ] : isEventAdmin ? [
+      { label: "Managed events", href: "/dashboard/events", icon: <Calendar className="h-4 w-4" />, section: "Event admin" },
+      { label: "Check‑in", href: "/dashboard/check-in", icon: <QrCode className="h-4 w-4" />, section: "Event admin" },
+      { label: "Analytics", href: "/dashboard/analytics", icon: <BarChart3 className="h-4 w-4" />, section: "Event admin" },
     ] : []),
 
     ...(isSuperAdmin ? [
@@ -50,7 +55,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const sections = Array.from(new Set(navItems.map((i) => i.section)));
 
   const handleSignOut = async () => { await signOut(); navigate("/auth"); };
-  const roleLabel = isSuperAdmin ? "Super Admin" : isOrganizer ? "Organizer" : "Attendee";
+  const roleLabel = isSuperAdmin ? "Super Admin" : isOrganizer ? "Organizer" : isEventAdmin ? "Event Admin" : "Attendee";
 
   return (
     <div className="min-h-screen bg-background flex">

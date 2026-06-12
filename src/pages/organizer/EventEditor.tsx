@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Send, Plus, Trash2, ExternalLink, Users, BarChart3, Upload, X, ImageIcon, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Send, Plus, Trash2, ExternalLink, Users, BarChart3, Upload, X, ImageIcon, Loader2, ShieldCheck, UserPlus, Mail } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
@@ -27,7 +27,8 @@ const toLocalInput = (iso: string) => {
 const EventEditor = () => {
   const { id } = useParams();
   const isNew = id === "new";
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const isSuperAdmin = roles.includes("super_admin");
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -161,12 +162,17 @@ const EventEditor = () => {
           {!isNew && <p className="text-sm text-muted-foreground capitalize">Status: <span className="font-medium">{form.status}</span></p>}
         </div>
 
+        {(() => {
+          const isOwner = !!event && !!user && event.organizer_id === user.id;
+          const canManage = isNew || isOwner || isSuperAdmin;
+          return (
         <Tabs defaultValue="details">
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="tiers" disabled={isNew}>Tickets</TabsTrigger>
             <TabsTrigger value="attendees" disabled={isNew}>Attendees</TabsTrigger>
             <TabsTrigger value="analytics" disabled={isNew}>Analytics</TabsTrigger>
+            {canManage && !isNew && <TabsTrigger value="admins">Admins</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="details" className="space-y-6 pt-4">
@@ -278,7 +284,10 @@ const EventEditor = () => {
           <TabsContent value="tiers" className="pt-4"><TiersPanel eventId={id!} currency={form.currency} /></TabsContent>
           <TabsContent value="attendees" className="pt-4"><AttendeesPanel eventId={id!} /></TabsContent>
           <TabsContent value="analytics" className="pt-4"><AnalyticsPanel eventId={id!} currency={form.currency} /></TabsContent>
+          {canManage && !isNew && <TabsContent value="admins" className="pt-4"><AdminsPanel eventId={id!} /></TabsContent>}
         </Tabs>
+          );
+        })()}
       </div>
     </DashboardLayout>
   );
@@ -540,6 +549,132 @@ const CoverImageUploader = ({
           if (file) handleFile(file);
         }}
       />
+    </div>
+  );
+};
+
+const MAX_EVENT_ADMINS = 4;
+
+const AdminsPanel = ({ eventId }: { eventId: string }) => {
+  const qc = useQueryClient();
+  const [email, setEmail] = useState("");
+
+  const { data: admins, isLoading } = useQuery({
+    queryKey: ["event-admins", eventId],
+    queryFn: async () => {
+      const { data: rows } = await supabase
+        .from("event_admins")
+        .select("id,user_id,invited_email,created_at,granted_by")
+        .eq("event_id", eventId)
+        .order("created_at", { ascending: true });
+      const ids = (rows || []).map((r: any) => r.user_id);
+      let profiles: any[] = [];
+      if (ids.length) {
+        const { data: ps } = await supabase
+          .from("profiles")
+          .select("id,full_name,email")
+          .in("id", ids);
+        profiles = ps || [];
+      }
+      return (rows || []).map((r: any) => ({
+        ...r,
+        profile: profiles.find((p) => p.id === r.user_id),
+      }));
+    },
+  });
+
+  const invite = useMutation({
+    mutationFn: async () => {
+      if (!email.trim()) throw new Error("Email required");
+      const { data, error } = await supabase.rpc("invite_event_admin", {
+        _event_id: eventId,
+        _email: email.trim(),
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: "Event admin added", description: email });
+      setEmail("");
+      qc.invalidateQueries({ queryKey: ["event-admins", eventId] });
+    },
+    onError: (e: any) => toast({ title: "Could not add admin", description: e.message, variant: "destructive" }),
+  });
+
+  const revoke = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.rpc("revoke_event_admin", {
+        _event_id: eventId,
+        _user_id: userId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Access revoked" });
+      qc.invalidateQueries({ queryKey: ["event-admins", eventId] });
+    },
+    onError: (e: any) => toast({ title: "Revoke failed", description: e.message, variant: "destructive" }),
+  });
+
+  const count = admins?.length || 0;
+  const atLimit = count >= MAX_EVENT_ADMINS;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            Event admins ({count}/{MAX_EVENT_ADMINS})
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Event admins can view this event's orders, attendees and analytics, and check in tickets — but cannot edit the event, see other events, or export data.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              type="email"
+              placeholder="person@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={atLimit || invite.isPending}
+              onKeyDown={(e) => { if (e.key === "Enter") invite.mutate(); }}
+            />
+            <Button onClick={() => invite.mutate()} disabled={atLimit || invite.isPending || !email.trim()} className="gap-2">
+              <UserPlus className="h-4 w-4" />Invite
+            </Button>
+          </div>
+          {atLimit && <p className="text-xs text-warning">Maximum of {MAX_EVENT_ADMINS} admins reached. Revoke one to invite another.</p>}
+          <p className="text-xs text-muted-foreground">The person must already have an EventSuite account with this email.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Current admins</CardTitle></CardHeader>
+        <CardContent>
+          {isLoading ? <p className="text-sm text-muted-foreground py-4 text-center">Loading…</p> :
+            !admins || admins.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">No event admins yet</p>
+            ) : (
+              <div className="space-y-2">
+                {admins.map((a: any) => (
+                  <div key={a.id} className="flex items-center justify-between border border-border rounded-lg p-3">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{a.profile?.full_name || a.invited_email || "User"}</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                        <Mail className="h-3 w-3" />{a.profile?.email || a.invited_email}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => revoke.mutate(a.user_id)} disabled={revoke.isPending}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

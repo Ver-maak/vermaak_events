@@ -118,6 +118,41 @@ export type Database = {
         }
         Relationships: []
       }
+      event_admins: {
+        Row: {
+          created_at: string
+          event_id: string
+          granted_by: string | null
+          id: string
+          invited_email: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          granted_by?: string | null
+          id?: string
+          invited_email?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          granted_by?: string | null
+          id?: string
+          invited_email?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_admins_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           capacity: number | null
@@ -1138,6 +1173,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      invite_event_admin: {
+        Args: { _email: string; _event_id: string }
+        Returns: Json
+      }
+      is_event_admin: {
+        Args: { _event_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
       lookup_rotaract_member: {
         Args: { _query: string }
@@ -1162,6 +1205,10 @@ export type Database = {
         Returns: Json
       }
       quote_order_fee: { Args: { _order_id: string }; Returns: Json }
+      revoke_event_admin: {
+        Args: { _event_id: string; _user_id: string }
+        Returns: undefined
+      }
       round_currency: {
         Args: {
           _amount: number

@@ -10,29 +10,42 @@ import { formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 
 const OrganizerEvents = () => {
-  const { user, roles } = useAuth();
+  const { user, roles, adminEventIds } = useAuth();
   const isSuper = roles.includes("super_admin");
+  const isOrganizer = roles.includes("organizer") || isSuper;
   const { data: events, isLoading } = useQuery({
-    queryKey: ["organizer-events", user?.id, isSuper],
+    queryKey: ["organizer-events", user?.id, isSuper, adminEventIds.join(",")],
     enabled: !!user?.id,
     queryFn: async () => {
       let q = supabase.from("events").select("*,tickets(count),orders(count)").order("created_at", { ascending: false });
-      if (!isSuper) q = q.eq("organizer_id", user!.id);
+      if (isSuper) {
+        // no filter
+      } else if (isOrganizer && adminEventIds.length > 0) {
+        q = q.or(`organizer_id.eq.${user!.id},id.in.(${adminEventIds.join(",")})`);
+      } else if (isOrganizer) {
+        q = q.eq("organizer_id", user!.id);
+      } else if (adminEventIds.length > 0) {
+        q = q.in("id", adminEventIds);
+      } else {
+        return [];
+      }
       const { data } = await q;
       return data || [];
     },
   });
+
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">My events</h1>
-            <p className="text-muted-foreground">Create, manage and publish your events</p>
+            <h1 className="text-2xl font-bold">{isOrganizer ? "My events" : "Managed events"}</h1>
+            <p className="text-muted-foreground">{isOrganizer ? "Create, manage and publish your events" : "Events you've been granted admin access to"}</p>
           </div>
-          <Link to="/dashboard/events/new"><Button className="gap-2"><Plus className="h-4 w-4" />New event</Button></Link>
+          {isOrganizer && <Link to="/dashboard/events/new"><Button className="gap-2"><Plus className="h-4 w-4" />New event</Button></Link>}
         </div>
+
 
         {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> :
           !events || events.length === 0 ? (
