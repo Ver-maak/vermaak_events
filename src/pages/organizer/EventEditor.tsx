@@ -651,7 +651,7 @@ const AdminsPanel = ({ eventId }: { eventId: string }) => {
             </Button>
           </div>
           {atLimit && <p className="text-xs text-warning">Maximum of {MAX_EVENT_ADMINS} admins reached. Revoke one to invite another.</p>}
-          <p className="text-xs text-muted-foreground">The person must already have an EventSuite account with this email.</p>
+          <p className="text-xs text-muted-foreground">If they don't have an EventSuite account yet, we'll save the invite and grant access automatically when they sign up with this email.</p>
         </CardContent>
       </Card>
 
