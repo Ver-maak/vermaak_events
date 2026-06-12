@@ -40,11 +40,12 @@ const OrganizerEvents = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">My events</h1>
-            <p className="text-muted-foreground">Create, manage and publish your events</p>
+            <h1 className="text-2xl font-bold">{isOrganizer ? "My events" : "Managed events"}</h1>
+            <p className="text-muted-foreground">{isOrganizer ? "Create, manage and publish your events" : "Events you've been granted admin access to"}</p>
           </div>
-          <Link to="/dashboard/events/new"><Button className="gap-2"><Plus className="h-4 w-4" />New event</Button></Link>
+          {isOrganizer && <Link to="/dashboard/events/new"><Button className="gap-2"><Plus className="h-4 w-4" />New event</Button></Link>}
         </div>
+
 
         {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> :
           !events || events.length === 0 ? (
