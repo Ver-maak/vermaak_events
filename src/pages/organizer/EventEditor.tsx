@@ -30,6 +30,7 @@ const EventEditor = () => {
   const { user, roles } = useAuth();
   const isSuperAdmin = roles.includes("super_admin");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const qc = useQueryClient();
 
   const [form, setForm] = useState({
