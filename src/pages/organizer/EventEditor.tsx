@@ -166,7 +166,7 @@ const EventEditor = () => {
           const isOwner = !!event && !!user && event.organizer_id === user.id;
           const canManage = isNew || isOwner || isSuperAdmin;
           return (
-        <TabsWithQuery canManage={canManage && !isNew}>
+        <EventEditorTabs canManage={canManage && !isNew} isNew={isNew}>
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="tiers" disabled={isNew}>Tickets</TabsTrigger>
