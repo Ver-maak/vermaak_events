@@ -162,12 +162,17 @@ const EventEditor = () => {
           {!isNew && <p className="text-sm text-muted-foreground capitalize">Status: <span className="font-medium">{form.status}</span></p>}
         </div>
 
+        {(() => {
+          const isOwner = !!event && !!user && event.organizer_id === user.id;
+          const canManage = isNew || isOwner || isSuperAdmin;
+          return (
         <Tabs defaultValue="details">
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="tiers" disabled={isNew}>Tickets</TabsTrigger>
             <TabsTrigger value="attendees" disabled={isNew}>Attendees</TabsTrigger>
             <TabsTrigger value="analytics" disabled={isNew}>Analytics</TabsTrigger>
+            {canManage && !isNew && <TabsTrigger value="admins">Admins</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="details" className="space-y-6 pt-4">
