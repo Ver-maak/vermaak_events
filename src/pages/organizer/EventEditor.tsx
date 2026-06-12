@@ -595,8 +595,14 @@ const AdminsPanel = ({ eventId }: { eventId: string }) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      toast({ title: "Event admin added", description: email });
+    onSuccess: (res: any) => {
+      const pending = res?.status === "pending";
+      toast({
+        title: pending ? "Invite saved" : "Event admin added",
+        description: pending
+          ? `${email} doesn't have an EventSuite account yet — they'll get access automatically once they sign up with this email.`
+          : email,
+      });
       setEmail("");
       qc.invalidateQueries({ queryKey: ["event-admins", eventId] });
     },
@@ -604,11 +610,8 @@ const AdminsPanel = ({ eventId }: { eventId: string }) => {
   });
 
   const revoke = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase.rpc("revoke_event_admin", {
-        _event_id: eventId,
-        _user_id: userId,
-      });
+    mutationFn: async (rowId: string) => {
+      const { error } = await supabase.rpc("revoke_event_admin_row", { _id: rowId });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -648,7 +651,7 @@ const AdminsPanel = ({ eventId }: { eventId: string }) => {
             </Button>
           </div>
           {atLimit && <p className="text-xs text-warning">Maximum of {MAX_EVENT_ADMINS} admins reached. Revoke one to invite another.</p>}
-          <p className="text-xs text-muted-foreground">The person must already have an EventSuite account with this email.</p>
+          <p className="text-xs text-muted-foreground">If they don't have an EventSuite account yet, we'll save the invite and grant access automatically when they sign up with this email.</p>
         </CardContent>
       </Card>
 
@@ -663,12 +666,19 @@ const AdminsPanel = ({ eventId }: { eventId: string }) => {
                 {admins.map((a: any) => (
                   <div key={a.id} className="flex items-center justify-between border border-border rounded-lg p-3">
                     <div className="min-w-0">
-                      <p className="font-medium truncate">{a.profile?.full_name || a.invited_email || "User"}</p>
+                      <p className="font-medium truncate flex items-center gap-2">
+                        {a.profile?.full_name || a.invited_email || "User"}
+                        {!a.user_id && (
+                          <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-warning/15 text-warning border border-warning/30">
+                            Pending signup
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
                         <Mail className="h-3 w-3" />{a.profile?.email || a.invited_email}
                       </p>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => revoke.mutate(a.user_id)} disabled={revoke.isPending}>
+                    <Button size="sm" variant="ghost" onClick={() => revoke.mutate(a.id)} disabled={revoke.isPending}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>

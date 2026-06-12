@@ -125,7 +125,7 @@ export type Database = {
           granted_by: string | null
           id: string
           invited_email: string | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -133,7 +133,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           invited_email?: string | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -141,7 +141,7 @@ export type Database = {
           granted_by?: string | null
           id?: string
           invited_email?: string | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1209,6 +1209,7 @@ export type Database = {
         Args: { _event_id: string; _user_id: string }
         Returns: undefined
       }
+      revoke_event_admin_row: { Args: { _id: string }; Returns: undefined }
       round_currency: {
         Args: {
           _amount: number
