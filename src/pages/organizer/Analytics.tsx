@@ -91,11 +91,21 @@ const Analytics = () => {
   };
 
   const { data } = useQuery({
-    queryKey: ["analytics-overview", user?.id, isSuper],
+      queryKey: ["analytics-overview", user?.id, isSuper, adminEventIds.join(",")],
     enabled: !!user?.id,
     queryFn: async () => {
       let eq = supabase.from("events").select("id,title,starts_at,currency,status");
-      if (!isSuper) eq = eq.eq("organizer_id", user!.id);
+      if (isSuper) {
+        // all events
+      } else if (isOrganizer && adminEventIds.length > 0) {
+        eq = eq.or(`organizer_id.eq.${user!.id},id.in.(${adminEventIds.join(",")})`);
+      } else if (isOrganizer) {
+        eq = eq.eq("organizer_id", user!.id);
+      } else if (adminEventIds.length > 0) {
+        eq = eq.in("id", adminEventIds);
+      } else {
+        return { events: [], stats: { revenue: 0, orders: 0, tickets: 0, checkedIn: 0 }, perEvent: [] };
+      }
       const { data: events } = await eq;
       const ids = (events || []).map((e) => e.id);
       if (ids.length === 0) return { events: [], stats: { revenue: 0, orders: 0, tickets: 0, checkedIn: 0 }, perEvent: [] };
