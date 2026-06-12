@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import EmptyState from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Plus, Users, Ticket } from "lucide-react";
+import { Calendar, Plus, Users, Ticket, Shield } from "lucide-react";
 import { formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 
