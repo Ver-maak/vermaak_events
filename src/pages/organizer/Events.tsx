@@ -10,18 +10,30 @@ import { formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 
 const OrganizerEvents = () => {
-  const { user, roles } = useAuth();
+  const { user, roles, adminEventIds } = useAuth();
   const isSuper = roles.includes("super_admin");
+  const isOrganizer = roles.includes("organizer") || isSuper;
   const { data: events, isLoading } = useQuery({
-    queryKey: ["organizer-events", user?.id, isSuper],
+    queryKey: ["organizer-events", user?.id, isSuper, adminEventIds.join(",")],
     enabled: !!user?.id,
     queryFn: async () => {
       let q = supabase.from("events").select("*,tickets(count),orders(count)").order("created_at", { ascending: false });
-      if (!isSuper) q = q.eq("organizer_id", user!.id);
+      if (isSuper) {
+        // no filter
+      } else if (isOrganizer && adminEventIds.length > 0) {
+        q = q.or(`organizer_id.eq.${user!.id},id.in.(${adminEventIds.join(",")})`);
+      } else if (isOrganizer) {
+        q = q.eq("organizer_id", user!.id);
+      } else if (adminEventIds.length > 0) {
+        q = q.in("id", adminEventIds);
+      } else {
+        return [];
+      }
       const { data } = await q;
       return data || [];
     },
   });
+
 
   return (
     <DashboardLayout>
