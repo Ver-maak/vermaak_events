@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   profile: Database["public"]["Tables"]["profiles"]["Row"] | null;
   roles: AppRole[];
+  adminEventIds: string[];
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   roles: [],
+  adminEventIds: [],
   loading: true,
   signOut: async () => {},
 });
@@ -31,15 +33,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Database["public"]["Tables"]["profiles"]["Row"] | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [adminEventIds, setAdminEventIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
-    const [profileRes, rolesRes] = await Promise.all([
+    const [profileRes, rolesRes, adminRes] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).single(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.from("event_admins").select("event_id").eq("user_id", userId),
     ]);
     if (profileRes.data) setProfile(profileRes.data);
     if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role));
+    if (adminRes.data) setAdminEventIds(adminRes.data.map((r: any) => r.event_id));
   };
 
   useEffect(() => {
@@ -52,6 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           setProfile(null);
           setRoles([]);
+          setAdminEventIds([]);
         }
         setLoading(false);
       }
@@ -75,10 +81,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
     setProfile(null);
     setRoles([]);
+    setAdminEventIds([]);
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, roles, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, roles, adminEventIds, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
