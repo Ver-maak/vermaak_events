@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -30,6 +30,7 @@ const EventEditor = () => {
   const { user, roles } = useAuth();
   const isSuperAdmin = roles.includes("super_admin");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const qc = useQueryClient();
 
   const [form, setForm] = useState({
@@ -165,8 +166,9 @@ const EventEditor = () => {
         {(() => {
           const isOwner = !!event && !!user && event.organizer_id === user.id;
           const canManage = isNew || isOwner || isSuperAdmin;
+          const initialTab = (searchParams.get("tab") === "admins" && canManage && !isNew) ? "admins" : "details";
           return (
-        <Tabs defaultValue="details">
+        <Tabs defaultValue={initialTab}>
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="tiers" disabled={isNew}>Tickets</TabsTrigger>
