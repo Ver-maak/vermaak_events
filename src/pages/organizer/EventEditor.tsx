@@ -595,8 +595,14 @@ const AdminsPanel = ({ eventId }: { eventId: string }) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      toast({ title: "Event admin added", description: email });
+    onSuccess: (res: any) => {
+      const pending = res?.status === "pending";
+      toast({
+        title: pending ? "Invite saved" : "Event admin added",
+        description: pending
+          ? `${email} doesn't have an EventSuite account yet — they'll get access automatically once they sign up with this email.`
+          : email,
+      });
       setEmail("");
       qc.invalidateQueries({ queryKey: ["event-admins", eventId] });
     },
@@ -604,11 +610,8 @@ const AdminsPanel = ({ eventId }: { eventId: string }) => {
   });
 
   const revoke = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase.rpc("revoke_event_admin", {
-        _event_id: eventId,
-        _user_id: userId,
-      });
+    mutationFn: async (rowId: string) => {
+      const { error } = await supabase.rpc("revoke_event_admin_row", { _id: rowId });
       if (error) throw error;
     },
     onSuccess: () => {
