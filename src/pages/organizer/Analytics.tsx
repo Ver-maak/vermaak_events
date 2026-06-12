@@ -166,18 +166,20 @@ const Analytics = () => {
                         <td>{e.checkedIn}</td>
                         <td className="font-medium">{formatMoney(e.revenue, e.currency)}</td>
                         <td className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5"
-                            disabled={exporting === e.id || e.tickets === 0}
-                            onClick={() => exportAttendees(e.id, e.title)}
-                          >
-                            {exporting === e.id
-                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              : <Download className="h-3.5 w-3.5" />}
-                            CSV
-                          </Button>
+                          {isOrganizer ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5"
+                              disabled={exporting === e.id || e.tickets === 0}
+                              onClick={() => exportAttendees(e.id, e.title)}
+                            >
+                              {exporting === e.id
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <Download className="h-3.5 w-3.5" />}
+                              CSV
+                            </Button>
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
                         </td>
                       </tr>
                     ))}
