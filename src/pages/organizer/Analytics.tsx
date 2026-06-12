@@ -31,9 +31,11 @@ const downloadCsv = (filename: string, rows: (string | number | null)[][]) => {
 };
 
 const Analytics = () => {
-  const { user, roles } = useAuth();
+  const { user, roles, adminEventIds } = useAuth();
   const isSuper = roles.includes("super_admin");
+  const isOrganizer = roles.includes("organizer") || isSuper;
   const [exporting, setExporting] = useState<string | null>(null);
+
 
   const exportAttendees = async (eventId: string, eventTitle: string) => {
     try {
