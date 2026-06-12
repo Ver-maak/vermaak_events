@@ -27,7 +27,8 @@ const toLocalInput = (iso: string) => {
 const EventEditor = () => {
   const { id } = useParams();
   const isNew = id === "new";
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const isSuperAdmin = roles.includes("super_admin");
   const navigate = useNavigate();
   const qc = useQueryClient();
 
