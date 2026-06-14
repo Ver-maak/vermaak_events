@@ -381,19 +381,42 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-muted-foreground text-xs uppercase">
-                <tr><th className="py-2">Holder</th><th>Email</th><th>Tier</th><th>Code</th><th>Order</th><th>Check-in</th></tr>
+                <tr>
+                  <th className="py-2">Holder</th>
+                  <th>Email</th>
+                  <th>Type</th>
+                  <th>Rotary club</th>
+                  <th>Member ID</th>
+                  <th>Tier</th>
+                  <th>Code</th>
+                  <th>Buyer</th>
+                  <th>Order</th>
+                  <th>Check-in</th>
+                </tr>
               </thead>
               <tbody>
-                {tickets.map((t: any) => (
-                  <tr key={t.id} className="border-t border-border">
-                    <td className="py-2 font-medium">{t.holder_name}</td>
-                    <td className="text-muted-foreground">{t.orders?.buyer_email}</td>
-                    <td>{t.ticket_tiers?.name || "—"}</td>
-                    <td className="font-mono text-xs">{t.code}</td>
-                    <td className="text-xs"><span className={`capitalize ${t.orders?.status === "paid" ? "text-success" : "text-warning"}`}>{t.orders?.status}</span></td>
-                    <td>{t.checked_in_at ? <span className="text-success text-xs">{formatDateTime(t.checked_in_at)}</span> : <span className="text-muted-foreground text-xs">—</span>}</td>
-                  </tr>
-                ))}
+                {tickets.map((t: any) => {
+                  const m = t.metadata || {};
+                  const type = m.attendee_type as string | undefined;
+                  return (
+                    <tr key={t.id} className="border-t border-border align-top">
+                      <td className="py-2 font-medium">{t.holder_name || "—"}</td>
+                      <td className="text-muted-foreground">{t.holder_email || t.orders?.buyer_email || "—"}</td>
+                      <td className="capitalize text-xs">
+                        {type ? (
+                          <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">{type}</span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                      <td className="text-xs">{m.rotary_club || "—"}</td>
+                      <td className="text-xs font-mono">{m.member_id || "—"}</td>
+                      <td>{t.ticket_tiers?.name || "—"}</td>
+                      <td className="font-mono text-xs">{t.code}</td>
+                      <td className="text-xs text-muted-foreground">{t.orders?.buyer_email || "—"}</td>
+                      <td className="text-xs"><span className={`capitalize ${t.orders?.status === "paid" ? "text-success" : "text-warning"}`}>{t.orders?.status}</span></td>
+                      <td>{t.checked_in_at ? <span className="text-success text-xs">{formatDateTime(t.checked_in_at)}</span> : <span className="text-muted-foreground text-xs">—</span>}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
