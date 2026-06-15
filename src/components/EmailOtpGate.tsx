@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,17 +13,56 @@ interface Props {
   onVerified?: (email: string) => void;
 }
 
+const RESEND_SECONDS = 30;
+
 /**
  * Passwordless checkout gate. The buyer enters their name + email; Supabase
  * sends a magic sign-in link that returns them to this page already signed in.
  * The link is single-use and expires after 10 minutes (configured in the
  * backend auth settings).
  */
-export const EmailOtpGate = ({ defaultEmail = "", defaultName = "" }: Props) => {
+export const EmailOtpGate = ({ defaultEmail = "", defaultName = "", onVerified }: Props) => {
   const [email, setEmail] = useState(defaultEmail);
   const [name, setName] = useState(defaultName);
   const [stage, setStage] = useState<"form" | "sent">("form");
   const [busy, setBusy] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const verifiedRef = useRef(false);
+
+  // Countdown for resend
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  // Detect any auth errors returned in the URL hash (e.g. expired link)
+  useEffect(() => {
+    const hash = window.location.hash || "";
+    if (!hash.includes("error")) return;
+    const params = new URLSearchParams(hash.replace(/^#/, ""));
+    const errDesc = params.get("error_description") || params.get("error");
+    if (errDesc) {
+      toast({
+        title: "Sign-in link problem",
+        description: decodeURIComponent(errDesc.replace(/\+/g, " ")),
+        variant: "destructive",
+      });
+      // Clear the hash so the toast doesn't repeat on re-render
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }, []);
+
+  // Notify caller when the user returns signed in
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user?.email && !verifiedRef.current) {
+        verifiedRef.current = true;
+        onVerified?.(session.user.email);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [onVerified]);
 
   const sendLink = async () => {
     const cleanEmail = email.trim().toLowerCase();
@@ -37,24 +76,31 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "" }: Props) => 
       return;
     }
     setBusy(true);
-    const returnTo = window.location.pathname + window.location.search + window.location.hash;
+    // Build a clean redirect URL (strip any existing hash so error fragments don't persist)
+    const returnTo = window.location.pathname + window.location.search;
+    const redirectTo = window.location.origin + returnTo;
     try { sessionStorage.setItem("es:post-login-redirect", returnTo); } catch {}
     try { localStorage.setItem("es:post-login-redirect", returnTo); } catch {}
     const { error } = await supabase.auth.signInWithOtp({
       email: cleanEmail,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: window.location.href,
+        emailRedirectTo: redirectTo,
         data: { full_name: cleanName },
       },
     });
     setBusy(false);
     if (error) {
-      toast({ title: "Could not send link", description: error.message, variant: "destructive" });
+      const msg = error.message || "";
+      const friendly = /rate|too many|seconds/i.test(msg)
+        ? "Too many requests — please wait a moment and try again."
+        : msg;
+      toast({ title: "Could not send link", description: friendly, variant: "destructive" });
       return;
     }
     setEmail(cleanEmail);
     setStage("sent");
+    setCooldown(RESEND_SECONDS);
     toast({ title: "Magic link sent", description: `Check ${cleanEmail} and tap the link to continue.` });
   };
 
@@ -90,6 +136,7 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "" }: Props) => 
           </Button>
           <p className="text-[11px] text-muted-foreground">
             We'll email you a secure sign-in link — no password needed. The link expires in 10 minutes.
+            Open the link on this same device/browser to return here automatically.
           </p>
         </>
       ) : (
@@ -99,7 +146,8 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "" }: Props) => 
             return here and complete your purchase.
           </p>
           <p className="text-[11px] text-muted-foreground">
-            The link expires in 10 minutes. If it expires, request a new one.
+            Tip: open the link on the same device and browser you're using now. If it doesn't arrive within a minute,
+            check your spam folder.
           </p>
           <div className="flex items-center justify-between text-xs">
             <button
@@ -112,10 +160,10 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "" }: Props) => 
             <button
               type="button"
               onClick={sendLink}
-              disabled={busy}
-              className="text-primary hover:underline disabled:opacity-50"
+              disabled={busy || cooldown > 0}
+              className="text-primary hover:underline disabled:opacity-50 disabled:no-underline"
             >
-              Resend link
+              {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend link"}
             </button>
           </div>
         </>
