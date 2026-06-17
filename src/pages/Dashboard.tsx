@@ -44,7 +44,11 @@ const Dashboard = () => {
       const eventIds = myEvents!.map((e) => e.id);
       const [{ data: orders }, { data: tickets }] = await Promise.all([
         supabase.from("orders").select("total_amount,status").in("event_id", eventIds),
-        supabase.from("tickets").select("id,checked_in_at").in("event_id", eventIds),
+        supabase
+          .from("tickets")
+          .select("id,checked_in_at,orders!inner(status)")
+          .in("event_id", eventIds)
+          .eq("orders.status", "paid"),
       ]);
       const revenue = (orders || []).filter((o) => o.status === "paid").reduce((s, o) => s + Number(o.total_amount || 0), 0);
       const ticketsSold = (tickets || []).length;

@@ -421,6 +421,64 @@ export type Database = {
           },
         ]
       }
+      order_ticket_holds: {
+        Row: {
+          created_at: string
+          event_id: string
+          holder_email: string | null
+          holder_name: string
+          id: string
+          metadata: Json
+          order_id: string
+          source_ticket_id: string | null
+          tier_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          holder_email?: string | null
+          holder_name: string
+          id?: string
+          metadata?: Json
+          order_id: string
+          source_ticket_id?: string | null
+          tier_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          holder_email?: string | null
+          holder_name?: string
+          id?: string
+          metadata?: Json
+          order_id?: string
+          source_ticket_id?: string | null
+          tier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_ticket_holds_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_ticket_holds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_ticket_holds_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           buyer_email: string
@@ -1161,6 +1219,10 @@ export type Database = {
         }
         Returns: Json
       }
+      generate_tickets_for_paid_order: {
+        Args: { _order_id: string }
+        Returns: number
+      }
       get_payment_provider_decrypted: {
         Args: { _code: string; _enc_key: string }
         Returns: Json
@@ -1232,6 +1294,10 @@ export type Database = {
           _redirect_success_url: string
         }
         Returns: string
+      }
+      sync_event_paid_ticket_counts: {
+        Args: { _event_id: string }
+        Returns: undefined
       }
       transfer_funds: {
         Args: {
