@@ -112,7 +112,11 @@ const Analytics = () => {
 
       const [{ data: orders }, { data: tickets }] = await Promise.all([
         supabase.from("orders").select("event_id,total_amount,status").in("event_id", ids),
-        supabase.from("tickets").select("event_id,checked_in_at").in("event_id", ids),
+        supabase
+          .from("tickets")
+          .select("event_id,checked_in_at,orders!inner(status)")
+          .in("event_id", ids)
+          .eq("orders.status", "paid"),
       ]);
 
       const paid = (orders || []).filter((o) => o.status === "paid");
