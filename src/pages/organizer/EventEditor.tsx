@@ -366,7 +366,12 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
   const { data: tickets } = useQuery({
     queryKey: ["event-attendees", eventId],
     queryFn: async () => {
-      const { data } = await supabase.from("tickets").select("*,orders(buyer_email,status,total_amount,currency,reference),ticket_tiers(name)").eq("event_id", eventId).order("created_at", { ascending: false });
+      const { data } = await supabase
+        .from("tickets")
+        .select("*,orders!inner(buyer_email,status,total_amount,currency,reference),ticket_tiers(name)")
+        .eq("event_id", eventId)
+        .eq("orders.status", "paid")
+        .order("created_at", { ascending: false });
       return data || [];
     },
   });
@@ -432,7 +437,11 @@ const AnalyticsPanel = ({ eventId, currency }: { eventId: string; currency: stri
     queryFn: async () => {
       const [{ data: orders }, { data: tickets }] = await Promise.all([
         supabase.from("orders").select("total_amount,status,created_at").eq("event_id", eventId),
-        supabase.from("tickets").select("id,checked_in_at,tier_id,ticket_tiers(name)").eq("event_id", eventId),
+        supabase
+          .from("tickets")
+          .select("id,checked_in_at,tier_id,ticket_tiers(name),orders!inner(status)")
+          .eq("event_id", eventId)
+          .eq("orders.status", "paid"),
       ]);
       const paid = (orders || []).filter((o) => o.status === "paid");
       const revenue = paid.reduce((s, o) => s + Number(o.total_amount || 0), 0);
