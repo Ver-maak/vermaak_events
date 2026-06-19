@@ -456,28 +456,149 @@ const exportLeaderboardCsv = (eventTitle: string, rows: LeaderRow[]) => {
 
 const exportLeaderboardPdf = (eventTitle: string, rows: LeaderRow[]) => {
   const total = rows.reduce((s, r) => s + r.count, 0);
-  const escHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+  const clubs = rows.length;
+  const top = rows[0]?.count || 0;
+  const escHtml = (s: string) =>
+    s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+  const initials = (name: string) =>
+    name
+      .replace(/^Rotaract Club of\s+/i, "")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() || "")
+      .join("") || "RC";
+  const medal = (i: number) => (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "");
+  const podium = rows.slice(0, 3);
+  const rest = rows.slice(3);
+  const podiumOrder = [podium[1], podium[0], podium[2]].filter(Boolean) as LeaderRow[];
+  const podiumHeights = [110, 150, 90];
+  const podiumColors = [
+    "linear-gradient(180deg,#cbd5e1,#94a3b8)",
+    "linear-gradient(180deg,#fde68a,#f59e0b)",
+    "linear-gradient(180deg,#fdba74,#c2410c)",
+  ];
+  const podiumPlaces = [2, 1, 3];
+
   const html = `<!doctype html><html><head><meta charset="utf-8"/>
-<title>Rotaract leaderboard — ${escHtml(eventTitle)}</title>
+<title>Rotaract Leaderboard — ${escHtml(eventTitle)}</title>
 <style>
-  *{box-sizing:border-box} body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;color:#0f172a;margin:32px}
-  h1{font-size:20px;margin:0 0 4px} .sub{color:#64748b;font-size:12px;margin-bottom:18px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0}
-  th{background:#f8fafc;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#475569}
-  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-  tfoot td{font-weight:600;border-top:2px solid #0f172a;border-bottom:none}
-  .rank{font-family:ui-monospace,Menlo,monospace;color:#64748b;width:42px}
-  @media print{body{margin:16mm}}
+  @page { size: A4; margin: 0; }
+  *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{margin:0;padding:0;background:#f1f5f9;color:#0f172a;font-family:Inter,-apple-system,"Segoe UI",sans-serif}
+  .page{width:210mm;min-height:297mm;margin:0 auto;background:#fff;position:relative;overflow:hidden}
+  .hero{position:relative;padding:38px 44px 28px;color:#fff;background:linear-gradient(135deg,#0b1e3b 0%,#1e3a8a 45%,#7c3aed 100%);overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:auto -80px -120px auto;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,.35),transparent 70%)}
+  .hero::after{content:"";position:absolute;top:-60px;left:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,.35),transparent 70%)}
+  .hero-inner{position:relative;z-index:1}
+  .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;opacity:.85;font-weight:600}
+  h1{font-family:"Space Grotesk",Inter,sans-serif;font-size:32px;margin:8px 0 6px;letter-spacing:-.02em;line-height:1.1}
+  .event{font-size:14px;opacity:.9;margin:0}
+  .stats{display:flex;gap:14px;margin-top:22px;flex-wrap:wrap}
+  .stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 14px;min-width:110px;backdrop-filter:blur(8px)}
+  .stat .v{font-family:"Space Grotesk",sans-serif;font-size:22px;font-weight:700;line-height:1}
+  .stat .l{font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.8;margin-top:4px}
+
+  .body{padding:32px 44px 44px}
+  .section-title{font-family:"Space Grotesk",sans-serif;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#475569;margin:0 0 14px;display:flex;align-items:center;gap:10px}
+  .section-title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,#cbd5e1,transparent)}
+
+  .podium{display:flex;align-items:flex-end;justify-content:center;gap:18px;margin:8px 0 32px;min-height:230px}
+  .pcol{flex:1;max-width:170px;text-align:center}
+  .pcard{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 10px;box-shadow:0 8px 24px -16px rgba(15,23,42,.3);margin-bottom:10px}
+  .medal{font-size:26px;line-height:1}
+  .pavatar{width:48px;height:48px;border-radius:50%;margin:8px auto 6px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-family:"Space Grotesk",sans-serif;font-size:15px;background:linear-gradient(135deg,#1e3a8a,#7c3aed);box-shadow:0 4px 12px -4px rgba(124,58,237,.5)}
+  .pclub{font-size:11px;font-weight:600;color:#0f172a;line-height:1.25;min-height:28px;display:flex;align-items:center;justify-content:center;padding:0 2px}
+  .pcount{font-family:"Space Grotesk",sans-serif;font-size:20px;font-weight:700;color:#1e3a8a;margin-top:4px}
+  .pcount span{font-size:10px;font-weight:500;color:#64748b;letter-spacing:.1em;text-transform:uppercase;margin-left:4px}
+  .pbar{border-radius:10px 10px 0 0;color:#fff;font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:22px;display:flex;align-items:flex-start;justify-content:center;padding-top:10px;box-shadow:inset 0 -8px 16px rgba(0,0,0,.12)}
+
+  .lb{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
+  .lb thead th{background:#0b1e3b;color:#cbd5e1;font-size:10px;letter-spacing:.14em;text-transform:uppercase;text-align:left;padding:11px 14px;font-weight:600}
+  .lb tbody td{padding:11px 14px;border-top:1px solid #eef2f7;vertical-align:middle}
+  .lb tbody tr:nth-child(even) td{background:#fafbfc}
+  .num{text-align:right;font-variant-numeric:tabular-nums;font-family:"Space Grotesk",sans-serif;font-weight:600;color:#0f172a}
+  .rank{width:46px;font-family:"Space Grotesk",sans-serif;font-weight:700;color:#7c3aed}
+  .club-cell{display:flex;align-items:center;gap:10px}
+  .avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;background:linear-gradient(135deg,#1e3a8a,#0ea5e9);flex:none}
+  .bar-cell{width:34%}
+  .bar{height:6px;background:#eef2f7;border-radius:99px;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,#0ea5e9,#7c3aed);border-radius:99px}
+  tfoot td{background:#0b1e3b;color:#fff;font-weight:700;padding:12px 14px;font-family:"Space Grotesk",sans-serif;letter-spacing:.04em}
+  tfoot td.num{color:#fff}
+
+  .footer{margin-top:28px;display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:#64748b;border-top:1px dashed #cbd5e1;padding-top:14px}
+  .brand{font-family:"Space Grotesk",sans-serif;font-weight:700;color:#1e3a8a;letter-spacing:.02em}
+  .brand span{color:#7c3aed}
+  .empty{padding:40px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:12px}
+
+  @media print { body{background:#fff} .page{margin:0;box-shadow:none} }
 </style></head><body>
-<h1>Rotaract Club Leaderboard</h1>
-<div class="sub">${escHtml(eventTitle)} · Generated ${new Date().toLocaleString()}</div>
-<table>
-  <thead><tr><th class="rank">#</th><th>Rotaract club</th><th class="num">Tickets</th></tr></thead>
-  <tbody>${rows.map((r, i) => `<tr><td class="rank">${i + 1}</td><td>${escHtml(r.club)}</td><td class="num">${r.count}</td></tr>`).join("")}</tbody>
-  <tfoot><tr><td></td><td>Total</td><td class="num">${total}</td></tr></tfoot>
-</table>
-<script>window.onload=()=>{setTimeout(()=>{window.print();},250);}</script>
+<div class="page">
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="eyebrow">Rotaract Impact Report</div>
+      <h1>Club Leaderboard</h1>
+      <p class="event">${escHtml(eventTitle)}</p>
+      <div class="stats">
+        <div class="stat"><div class="v">${total}</div><div class="l">Tickets sold</div></div>
+        <div class="stat"><div class="v">${clubs}</div><div class="l">Clubs ranked</div></div>
+        <div class="stat"><div class="v">${top}</div><div class="l">Top club tally</div></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="body">
+    ${rows.length === 0 ? `<div class="empty">No Rotaract club tickets recorded yet.</div>` : `
+    ${podium.length ? `
+    <div class="section-title">Podium</div>
+    <section class="podium">
+      ${podiumOrder
+        .map((r, idx) => {
+          const place = podiumPlaces[idx];
+          const h = podiumHeights[place - 1];
+          const col = podiumColors[place - 1];
+          return `<div class="pcol">
+            <div class="pcard">
+              <div class="medal">${medal(place - 1)}</div>
+              <div class="pavatar">${escHtml(initials(r.club))}</div>
+              <div class="pclub">${escHtml(r.club)}</div>
+              <div class="pcount">${r.count}<span>tix</span></div>
+            </div>
+            <div class="pbar" style="height:${h}px;background:${col}">${place}</div>
+          </div>`;
+        })
+        .join("")}
+    </section>` : ""}
+
+    <div class="section-title">Full ranking</div>
+    <table class="lb">
+      <thead><tr>
+        <th class="rank">#</th><th>Club</th><th>Share</th><th class="num">Tickets</th>
+      </tr></thead>
+      <tbody>
+        ${rows
+          .map((r, i) => {
+            const pct = top > 0 ? Math.round((r.count / top) * 100) : 0;
+            return `<tr>
+              <td class="rank">${medal(i) || String(i + 1).padStart(2, "0")}</td>
+              <td><div class="club-cell"><div class="avatar">${escHtml(initials(r.club))}</div><div>${escHtml(r.club)}</div></div></td>
+              <td class="bar-cell"><div class="bar"><i style="width:${pct}%"></i></div></td>
+              <td class="num">${r.count}</td>
+            </tr>`;
+          })
+          .join("")}
+      </tbody>
+      <tfoot><tr><td colspan="3">Total tickets</td><td class="num">${total}</td></tr></tfoot>
+    </table>`}
+
+    <div class="footer">
+      <div class="brand">Vermaak<span>Events</span> · EnventSuite</div>
+      <div>Generated ${escHtml(new Date().toLocaleString())}</div>
+    </div>
+  </main>
+</div>
+<script>window.onload=()=>{setTimeout(()=>{window.print();},350);}</script>
 </body></html>`;
   const w = window.open("", "_blank");
   if (!w) {
