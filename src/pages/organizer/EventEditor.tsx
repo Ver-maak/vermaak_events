@@ -285,7 +285,7 @@ const EventEditor = () => {
 
           <TabsContent value="tiers" className="pt-4"><TiersPanel eventId={id!} currency={form.currency} /></TabsContent>
           <TabsContent value="attendees" className="pt-4"><AttendeesPanel eventId={id!} /></TabsContent>
-          <TabsContent value="analytics" className="pt-4"><AnalyticsPanel eventId={id!} currency={form.currency} /></TabsContent>
+          <TabsContent value="analytics" className="pt-4"><AnalyticsPanel eventId={id!} currency={form.currency} eventTitle={form.title} /></TabsContent>
           {canManage && !isNew && <TabsContent value="admins" className="pt-4"><AdminsPanel eventId={id!} /></TabsContent>}
         </Tabs>
           );
