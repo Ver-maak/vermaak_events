@@ -431,6 +431,64 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
   );
 };
 
+type LeaderRow = { club: string; count: number };
+
+const safeFilename = (s: string) => (s || "event").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
+
+const exportLeaderboardCsv = (eventTitle: string, rows: LeaderRow[]) => {
+  const esc = (v: any) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [["Rank", "Rotaract club", "Tickets"], ...rows.map((r, i) => [i + 1, r.club, r.count])]
+    .map((r) => r.map(esc).join(","))
+    .join("\n");
+  const blob = new Blob([lines], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `rotaract-leaderboard-${safeFilename(eventTitle)}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+const exportLeaderboardPdf = (eventTitle: string, rows: LeaderRow[]) => {
+  const total = rows.reduce((s, r) => s + r.count, 0);
+  const escHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+  const html = `<!doctype html><html><head><meta charset="utf-8"/>
+<title>Rotaract leaderboard — ${escHtml(eventTitle)}</title>
+<style>
+  *{box-sizing:border-box} body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;color:#0f172a;margin:32px}
+  h1{font-size:20px;margin:0 0 4px} .sub{color:#64748b;font-size:12px;margin-bottom:18px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #e2e8f0}
+  th{background:#f8fafc;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#475569}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tfoot td{font-weight:600;border-top:2px solid #0f172a;border-bottom:none}
+  .rank{font-family:ui-monospace,Menlo,monospace;color:#64748b;width:42px}
+  @media print{body{margin:16mm}}
+</style></head><body>
+<h1>Rotaract Club Leaderboard</h1>
+<div class="sub">${escHtml(eventTitle)} · Generated ${new Date().toLocaleString()}</div>
+<table>
+  <thead><tr><th class="rank">#</th><th>Rotaract club</th><th class="num">Tickets</th></tr></thead>
+  <tbody>${rows.map((r, i) => `<tr><td class="rank">${i + 1}</td><td>${escHtml(r.club)}</td><td class="num">${r.count}</td></tr>`).join("")}</tbody>
+  <tfoot><tr><td></td><td>Total</td><td class="num">${total}</td></tr></tfoot>
+</table>
+<script>window.onload=()=>{setTimeout(()=>{window.print();},250);}</script>
+</body></html>`;
+  const w = window.open("", "_blank");
+  if (!w) {
+    toast({ title: "Pop-up blocked", description: "Allow pop-ups to export the PDF.", variant: "destructive" });
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+};
+
 const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; currency: string; eventTitle: string }) => {
   const { data } = useQuery({
     queryKey: ["event-analytics", eventId],
