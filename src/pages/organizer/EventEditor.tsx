@@ -431,7 +431,7 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
   );
 };
 
-const AnalyticsPanel = ({ eventId, currency }: { eventId: string; currency: string }) => {
+const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; currency: string; eventTitle: string }) => {
   const { data } = useQuery({
     queryKey: ["event-analytics", eventId],
     queryFn: async () => {
