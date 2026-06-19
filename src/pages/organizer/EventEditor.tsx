@@ -439,7 +439,7 @@ const AnalyticsPanel = ({ eventId, currency }: { eventId: string; currency: stri
         supabase.from("orders").select("total_amount,status,created_at").eq("event_id", eventId),
         supabase
           .from("tickets")
-          .select("id,checked_in_at,tier_id,ticket_tiers(name),orders!inner(status)")
+          .select("id,checked_in_at,tier_id,metadata,ticket_tiers(name),orders!inner(status)")
           .eq("event_id", eventId)
           .eq("orders.status", "paid"),
       ]);
@@ -447,8 +447,20 @@ const AnalyticsPanel = ({ eventId, currency }: { eventId: string; currency: stri
       const revenue = paid.reduce((s, o) => s + Number(o.total_amount || 0), 0);
       const checkedIn = (tickets || []).filter((t) => t.checked_in_at).length;
       const byTier: Record<string, number> = {};
-      (tickets || []).forEach((t: any) => { const n = t.ticket_tiers?.name || "Untiered"; byTier[n] = (byTier[n] || 0) + 1; });
-      return { revenue, ordersCount: orders?.length || 0, paidCount: paid.length, ticketsTotal: tickets?.length || 0, checkedIn, byTier };
+      const byClub: Record<string, number> = {};
+      (tickets || []).forEach((t: any) => {
+        const n = t.ticket_tiers?.name || "Untiered";
+        byTier[n] = (byTier[n] || 0) + 1;
+        const m = t.metadata || {};
+        if (m.attendee_type === "rotaractor") {
+          const club = (m.rotary_club || "").toString().trim();
+          if (club) byClub[club] = (byClub[club] || 0) + 1;
+        }
+      });
+      const leaderboard = Object.entries(byClub)
+        .map(([club, count]) => ({ club, count }))
+        .sort((a, b) => b.count - a.count);
+      return { revenue, ordersCount: orders?.length || 0, paidCount: paid.length, ticketsTotal: tickets?.length || 0, checkedIn, byTier, leaderboard };
     },
   });
 
@@ -469,6 +481,41 @@ const AnalyticsPanel = ({ eventId, currency }: { eventId: string; currency: stri
             );
           })}
       </CardContent></Card>
+
+      <Card className="md:col-span-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />Rotaract club leaderboard
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">Paid tickets purchased by Rotaractors, grouped by club</p>
+        </CardHeader>
+        <CardContent>
+          {data.leaderboard.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No Rotaract club tickets yet</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-muted-foreground text-xs uppercase">
+                  <tr>
+                    <th className="py-2 w-12">#</th>
+                    <th>Rotaract club</th>
+                    <th className="text-right">Tickets</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.leaderboard.map((row, i) => (
+                    <tr key={row.club} className="border-t border-border">
+                      <td className="py-2 font-mono text-xs text-muted-foreground">{i + 1}</td>
+                      <td className="font-medium">{row.club}</td>
+                      <td className="text-right font-semibold">{row.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
