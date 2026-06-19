@@ -484,10 +484,20 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
 
       <Card className="md:col-span-2">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />Rotaract club leaderboard
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">Paid tickets purchased by Rotaractors, grouped by club</p>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />Rotaract club leaderboard
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">Paid tickets purchased by Rotaractors, grouped by club</p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={!data.leaderboard.length}
+                onClick={() => exportLeaderboardCsv(eventTitle, data.leaderboard)}>CSV</Button>
+              <Button size="sm" variant="outline" disabled={!data.leaderboard.length}
+                onClick={() => exportLeaderboardPdf(eventTitle, data.leaderboard)}>PDF</Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {data.leaderboard.length === 0 ? (
