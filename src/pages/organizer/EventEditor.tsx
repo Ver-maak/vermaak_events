@@ -456,7 +456,6 @@ const exportLeaderboardCsv = (eventTitle: string, rows: LeaderRow[]) => {
 
 const exportLeaderboardPdf = (eventTitle: string, rows: LeaderRow[]) => {
   const total = rows.reduce((s, r) => s + r.count, 0);
-  const clubs = rows.length;
   const top = rows[0]?.count || 0;
   const escHtml = (s: string) =>
     s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
