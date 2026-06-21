@@ -471,14 +471,12 @@ const exportLeaderboardPdf = (eventTitle: string, rows: LeaderRow[]) => {
   const medal = (i: number) => (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : "");
   const podium = rows.slice(0, 3);
   const rest = rows.slice(3);
-  const podiumOrder = [podium[1], podium[0], podium[2]].filter(Boolean) as LeaderRow[];
-  const podiumHeights = [110, 150, 90];
-  const podiumColors = [
-    "linear-gradient(180deg,#cbd5e1,#94a3b8)",
-    "linear-gradient(180deg,#fde68a,#f59e0b)",
-    "linear-gradient(180deg,#fdba74,#c2410c)",
-  ];
-  const podiumPlaces = [2, 1, 3];
+  // Display order: silver(2nd), gold(1st), bronze(3rd) — but each slot keeps its real place
+  const podiumSlots = [
+    { row: podium[1], place: 2, height: 110, color: "linear-gradient(180deg,#cbd5e1,#94a3b8)" },
+    { row: podium[0], place: 1, height: 150, color: "linear-gradient(180deg,#fde68a,#f59e0b)" },
+    { row: podium[2], place: 3, height: 90,  color: "linear-gradient(180deg,#fdba74,#c2410c)" },
+  ].filter((s) => s.row);
 
   const html = `<!doctype html><html><head><meta charset="utf-8"/>
 <title>Rotaract Leaderboard — ${escHtml(eventTitle)}</title>
