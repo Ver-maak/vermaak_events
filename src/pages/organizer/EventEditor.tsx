@@ -538,11 +538,6 @@ const exportLeaderboardPdf = (eventTitle: string, rows: LeaderRow[]) => {
       <div class="eyebrow">Rotaract Impact Report</div>
       <h1>Club Leaderboard</h1>
       <p class="event">${escHtml(eventTitle)}</p>
-      <div class="stats">
-        <div class="stat"><div class="v">${total}</div><div class="l">Tickets sold</div></div>
-        <div class="stat"><div class="v">${clubs}</div><div class="l">Clubs ranked</div></div>
-        <div class="stat"><div class="v">${top}</div><div class="l">Top club tally</div></div>
-      </div>
     </div>
   </header>
 
@@ -551,35 +546,35 @@ const exportLeaderboardPdf = (eventTitle: string, rows: LeaderRow[]) => {
     ${podium.length ? `
     <div class="section-title">Podium</div>
     <section class="podium">
-      ${podiumOrder
-        .map((r, idx) => {
-          const place = podiumPlaces[idx];
-          const h = podiumHeights[place - 1];
-          const col = podiumColors[place - 1];
+      ${podiumSlots
+        .map((s) => {
+          const r = s.row!;
           return `<div class="pcol">
             <div class="pcard">
-              <div class="medal">${medal(place - 1)}</div>
+              <div class="medal">${medal(s.place - 1)}</div>
               <div class="pavatar">${escHtml(initials(r.club))}</div>
               <div class="pclub">${escHtml(r.club)}</div>
               <div class="pcount">${r.count}<span>tix</span></div>
             </div>
-            <div class="pbar" style="height:${h}px;background:${col}">${place}</div>
+            <div class="pbar" style="height:${s.height}px;background:${s.color}">${s.place}</div>
           </div>`;
         })
         .join("")}
     </section>` : ""}
 
+    ${rest.length ? `
     <div class="section-title">Full ranking</div>
     <table class="lb">
       <thead><tr>
         <th class="rank">#</th><th>Club</th><th>Share</th><th class="num">Tickets</th>
       </tr></thead>
       <tbody>
-        ${rows
+        ${rest
           .map((r, i) => {
+            const rank = i + 4;
             const pct = top > 0 ? Math.round((r.count / top) * 100) : 0;
             return `<tr>
-              <td class="rank">${medal(i) || String(i + 1).padStart(2, "0")}</td>
+              <td class="rank">${String(rank).padStart(2, "0")}</td>
               <td><div class="club-cell"><div class="avatar">${escHtml(initials(r.club))}</div><div>${escHtml(r.club)}</div></div></td>
               <td class="bar-cell"><div class="bar"><i style="width:${pct}%"></i></div></td>
               <td class="num">${r.count}</td>
@@ -588,7 +583,7 @@ const exportLeaderboardPdf = (eventTitle: string, rows: LeaderRow[]) => {
           .join("")}
       </tbody>
       <tfoot><tr><td colspan="3">Total tickets</td><td class="num">${total}</td></tr></tfoot>
-    </table>`}
+    </table>` : ""}`}
 
     <div class="footer">
       <div class="brand">Vermaak<span>Events</span> · EnventSuite</div>
