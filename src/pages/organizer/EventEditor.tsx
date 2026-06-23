@@ -173,6 +173,7 @@ const EventEditor = () => {
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="tiers" disabled={isNew}>Tickets</TabsTrigger>
             <TabsTrigger value="attendees" disabled={isNew}>Attendees</TabsTrigger>
+            <TabsTrigger value="pending" disabled={isNew}>Pending</TabsTrigger>
             <TabsTrigger value="analytics" disabled={isNew}>Analytics</TabsTrigger>
             {canManage && !isNew && <TabsTrigger value="admins">Admins</TabsTrigger>}
           </TabsList>
