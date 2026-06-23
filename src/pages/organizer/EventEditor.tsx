@@ -364,6 +364,88 @@ const TiersPanel = ({ eventId, currency }: { eventId: string; currency: string }
   );
 };
 
+const PendingOrdersPanel = ({ eventId }: { eventId: string }) => {
+  const { data: orders, isLoading } = useQuery({
+    queryKey: ["event-pending-orders", eventId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("id,reference,buyer_name,buyer_email,buyer_phone,total_amount,currency,status,created_at,order_ticket_holds(id,holder_name,holder_email,ticket_tiers(name))")
+        .eq("event_id", eventId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+  });
+
+  const totalHolds = (orders || []).reduce((s: number, o: any) => s + (o.order_ticket_holds?.length || 0), 0);
+
+  return (
+    <Card>
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-base flex items-center gap-2"><Users className="h-4 w-4" />Pending orders ({orders?.length || 0})</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          {totalHolds} ticket{totalHolds === 1 ? "" : "s"} awaiting payment. Reach out to buyers below to offer support.
+        </p>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p> :
+          !orders || orders.length === 0 ? <p className="text-sm text-muted-foreground py-6 text-center">No pending orders 🎉</p> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-muted-foreground text-xs uppercase">
+                <tr>
+                  <th className="py-2">Buyer</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Tickets</th>
+                  <th>Total</th>
+                  <th>Reference</th>
+                  <th>Created</th>
+                  <th>Contact</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o: any) => {
+                  const tierSummary = (o.order_ticket_holds || [])
+                    .map((h: any) => h.ticket_tiers?.name || "—")
+                    .reduce((acc: Record<string, number>, n: string) => { acc[n] = (acc[n] || 0) + 1; return acc; }, {});
+                  const tierLabel = Object.entries(tierSummary).map(([n, c]) => `${c}× ${n}`).join(", ") || "—";
+                  const phone = (o.buyer_phone || "").replace(/[^\d+]/g, "");
+                  return (
+                    <tr key={o.id} className="border-t border-border align-top">
+                      <td className="py-2 font-medium">{o.buyer_name || "—"}</td>
+                      <td className="text-muted-foreground text-xs">{o.buyer_email || "—"}</td>
+                      <td className="text-muted-foreground text-xs">{o.buyer_phone || "—"}</td>
+                      <td className="text-xs">{tierLabel}</td>
+                      <td className="font-semibold">{formatMoney(Number(o.total_amount), o.currency)}</td>
+                      <td className="font-mono text-xs">{o.reference}</td>
+                      <td className="text-xs text-muted-foreground">{formatDateTime(o.created_at)}</td>
+                      <td className="text-xs">
+                        <div className="flex flex-wrap gap-2">
+                          {o.buyer_email && (
+                            <a className="text-primary hover:underline" href={`mailto:${o.buyer_email}?subject=${encodeURIComponent("Your pending ticket order " + o.reference)}`}>Email</a>
+                          )}
+                          {phone && (
+                            <>
+                              <a className="text-primary hover:underline" href={`tel:${phone}`}>Call</a>
+                              <a className="text-primary hover:underline" href={`https://wa.me/${phone.replace(/^\+/, "")}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const AttendeesPanel = ({ eventId }: { eventId: string }) => {
   const { data: tickets } = useQuery({
     queryKey: ["event-attendees", eventId],
