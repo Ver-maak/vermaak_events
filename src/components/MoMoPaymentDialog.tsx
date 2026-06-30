@@ -70,7 +70,16 @@ const MoMoPaymentDialog = ({
   }, [open]);
 
   const providerLabel = provider === "mtn_momo" ? "MTN Mobile Money" : "Airtel Money";
-  const validPhone = /^\+?\d{9,15}$/.test(phone.replace(/\s/g, ""));
+  const normalizePhone = (raw: string) => {
+    const digits = raw.replace(/[^\d+]/g, "");
+    if (digits.startsWith("+")) return digits;
+    if (digits.startsWith("256")) return "+" + digits;
+    if (digits.startsWith("0")) return "+256" + digits.slice(1);
+    if (/^[7][0-9]{8}$/.test(digits)) return "+256" + digits;
+    return digits;
+  };
+  const normalizedPhone = normalizePhone(phone);
+  const validPhone = /^\+\d{9,15}$/.test(normalizedPhone);
 
   const runFlow = async () => {
     if (!validPhone) { setError("Enter a valid phone number"); return; }
