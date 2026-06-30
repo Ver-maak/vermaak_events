@@ -101,7 +101,7 @@ const MoMoPaymentDialog = ({
     }, 1000) as unknown as number;
 
     try {
-      await onConfirm({ method: provider, phone, reference: ref });
+      await onConfirm({ method: provider, phone: normalizedPhone, reference: ref });
       if (cancelledRef.current) return;
       setStage("success");
       setTimeout(() => onOpenChange(false), 1500);
