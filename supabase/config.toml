@@ -2,3 +2,6 @@ project_id = "jxdtnefqihvnkkksbgzh"
 
 [functions.bootstrap-superadmin]
 verify_jwt = false
+
+[functions.delete-auth-user]
+verify_jwt = false
