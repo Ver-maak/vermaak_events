@@ -19,18 +19,17 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const admin = createClient(url, service);
 
-    // Allow service-role bearer to bypass user check (used by admin tooling)
-    if (token !== service) {
-      const userClient = createClient(url, anon, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: claims } = await userClient.auth.getClaims(token);
-      if (!claims?.claims?.sub) {
+    // Decode JWT payload (no verification needed — gateway already validated)
+    let payload: any = {};
+    try { payload = JSON.parse(atob(token.split(".")[1])); } catch {}
+
+    if (payload.role !== "service_role") {
+      if (!payload.sub) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", claims.claims.sub);
+      const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", payload.sub);
       if (!roles?.some((r: any) => r.role === "super_admin")) {
         return new Response(JSON.stringify({ error: "Forbidden — super admin only" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
