@@ -1228,6 +1228,7 @@ export type Database = {
         Returns: Json
       }
       get_user_org: { Args: { _user_id: string }; Returns: string }
+      has_password_set: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

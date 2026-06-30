@@ -64,16 +64,30 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "", onVerified }
         signUpError && /registered|already|exists/i.test(signUpError.message || "");
 
       if (alreadyExists) {
-        // Existing account — sign in with the password they typed.
+        // Existing account — try the typed password first.
         const { error: signInErr } = await supabase.auth.signInWithPassword({
           email: cleanEmail,
           password,
         });
         if (signInErr) {
+          // If the account has no password yet (magic-link signup), claim this one.
+          const { data: claim } = await supabase.functions.invoke("claim-password", {
+            body: { email: cleanEmail, password },
+          });
+          if (claim?.ok) {
+            const { error: retryErr } = await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password,
+            });
+            if (!retryErr) {
+              toast({ title: "Password set", description: "You can use this password from now on." });
+              return;
+            }
+          }
           setWrongPassword(true);
           toast({
             title: "Wrong password",
-            description: "An account with this email already exists. Enter your existing password to continue.",
+            description: "An account with this email already exists and has a password. Enter it, or tap the link below to reset it.",
             variant: "destructive",
           });
         }

@@ -46,7 +46,25 @@ const Auth = () => {
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
-        if (error) throw error;
+        if (error) {
+          // If the account exists but has no password yet (magic-link only),
+          // claim this typed password as the new password and sign in.
+          if ((error.message || "").toLowerCase().includes("invalid login credentials")) {
+            const { data: claim } = await supabase.functions.invoke("claim-password", {
+              body: { email: normalizedEmail, password },
+            });
+            if (claim?.ok) {
+              const { error: retryErr } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
+              if (!retryErr) {
+                toast({ title: "Password set", description: "You can use this password from now on." });
+                navigate(redirectTarget, { replace: true });
+                return;
+              }
+              throw retryErr;
+            }
+          }
+          throw error;
+        }
         navigate(redirectTarget, { replace: true });
       } else {
         const { data, error } = await supabase.auth.signUp({
