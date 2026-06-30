@@ -15,6 +15,34 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { slugify, formatMoney, formatDateTime } from "@/lib/format";
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+const TrendsChart = ({ data, currency }: { data: { date: string; transactions: number; revenue: number; tickets: number; checkins: number }[]; currency: string }) => {
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-UG", { month: "short", day: "numeric" });
+  const fmtMoney = (v: number) => new Intl.NumberFormat("en-UG", { notation: "compact", maximumFractionDigits: 1 }).format(v);
+  return (
+    <div className="w-full h-[340px]">
+      <ResponsiveContainer>
+        <ComposedChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+          <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 11 }} />
+          <YAxis yAxisId="left" tick={{ fontSize: 11 }} allowDecimals={false} />
+          <YAxis yAxisId="right" orientation="right" tickFormatter={fmtMoney} tick={{ fontSize: 11 }} />
+          <Tooltip
+            contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+            labelFormatter={(l) => fmtDate(l as string)}
+            formatter={(value: any, name: string) => name === "Revenue" ? [formatMoney(Number(value), currency), name] : [value, name]}
+          />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Bar yAxisId="left" dataKey="transactions" name="Transactions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+          <Bar yAxisId="left" dataKey="tickets" name="Tickets" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+          <Line yAxisId="left" dataKey="checkins" name="Check-ins" stroke="hsl(var(--success))" strokeWidth={2} dot={false} />
+          <Line yAxisId="right" dataKey="revenue" name="Revenue" stroke="hsl(var(--warning))" strokeWidth={2} dot={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
 
 // Convert an ISO/UTC timestamp into the "YYYY-MM-DDTHH:mm" string that
 // <input type="datetime-local"> expects, expressed in the user's LOCAL timezone.
@@ -452,7 +480,7 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
     queryFn: async () => {
       const { data } = await supabase
         .from("tickets")
-        .select("*,orders!inner(buyer_email,status,total_amount,currency,reference),ticket_tiers(name)")
+        .select("*,orders!inner(buyer_name,buyer_email,buyer_phone,status,total_amount,currency,reference),ticket_tiers(name)")
         .eq("event_id", eventId)
         .eq("orders.status", "paid")
         .order("created_at", { ascending: false });
@@ -473,6 +501,7 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                 <tr>
                   <th className="py-2">Holder</th>
                   <th>Email</th>
+                  <th>Phone</th>
                   <th>Type</th>
                   <th>Rotary club</th>
                   <th>Member ID</th>
@@ -487,10 +516,17 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                 {tickets.map((t: any) => {
                   const m = t.metadata || {};
                   const type = m.attendee_type as string | undefined;
+                  const phone = t.orders?.buyer_phone || "";
+                  const phoneDigits = phone.replace(/[^\d+]/g, "");
                   return (
                     <tr key={t.id} className="border-t border-border align-top">
                       <td className="py-2 font-medium">{t.holder_name || "—"}</td>
                       <td className="text-muted-foreground">{t.holder_email || t.orders?.buyer_email || "—"}</td>
+                      <td className="text-xs">
+                        {phone ? (
+                          <a href={`tel:${phoneDigits}`} className="text-primary hover:underline">{phone}</a>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
                       <td className="capitalize text-xs">
                         {type ? (
                           <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">{type}</span>
@@ -500,7 +536,7 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                       <td className="text-xs font-mono">{m.member_id || "—"}</td>
                       <td>{t.ticket_tiers?.name || "—"}</td>
                       <td className="font-mono text-xs">{t.code}</td>
-                      <td className="text-xs text-muted-foreground">{t.orders?.buyer_email || "—"}</td>
+                      <td className="text-xs text-muted-foreground">{t.orders?.buyer_name || t.orders?.buyer_email || "—"}</td>
                       <td className="text-xs"><span className={`capitalize ${t.orders?.status === "paid" ? "text-success" : "text-warning"}`}>{t.orders?.status}</span></td>
                       <td>{t.checked_in_at ? <span className="text-success text-xs">{formatDateTime(t.checked_in_at)}</span> : <span className="text-muted-foreground text-xs">—</span>}</td>
                     </tr>
@@ -508,6 +544,7 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                 })}
               </tbody>
             </table>
+
           </div>
         )}
       </CardContent>
@@ -691,10 +728,10 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
     queryKey: ["event-analytics", eventId],
     queryFn: async () => {
       const [{ data: orders }, { data: tickets }] = await Promise.all([
-        supabase.from("orders").select("total_amount,status,created_at").eq("event_id", eventId),
+        supabase.from("orders").select("total_amount,status,created_at,paid_at").eq("event_id", eventId),
         supabase
           .from("tickets")
-          .select("id,checked_in_at,tier_id,metadata,ticket_tiers(name),orders!inner(status)")
+          .select("id,checked_in_at,tier_id,metadata,created_at,ticket_tiers(name),orders!inner(status)")
           .eq("event_id", eventId)
           .eq("orders.status", "paid"),
       ]);
@@ -715,7 +752,24 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
       const leaderboard = Object.entries(byClub)
         .map(([club, count]) => ({ club, count }))
         .sort((a, b) => b.count - a.count);
-      return { revenue, ordersCount: orders?.length || 0, paidCount: paid.length, ticketsTotal: tickets?.length || 0, checkedIn, byTier, leaderboard };
+
+      // Daily trends — orders/transactions, revenue, tickets, check-ins.
+      const dayKey = (iso: string) => new Date(iso).toISOString().slice(0, 10);
+      const trendMap: Record<string, { date: string; transactions: number; revenue: number; tickets: number; checkins: number }> = {};
+      const bump = (k: string) => (trendMap[k] = trendMap[k] || { date: k, transactions: 0, revenue: 0, tickets: 0, checkins: 0 });
+      paid.forEach((o: any) => {
+        const k = dayKey(o.paid_at || o.created_at);
+        const b = bump(k);
+        b.transactions += 1;
+        b.revenue += Number(o.total_amount || 0);
+      });
+      (tickets || []).forEach((t: any) => {
+        bump(dayKey(t.created_at)).tickets += 1;
+        if (t.checked_in_at) bump(dayKey(t.checked_in_at)).checkins += 1;
+      });
+      const trends = Object.values(trendMap).sort((a, b) => a.date.localeCompare(b.date));
+
+      return { revenue, ordersCount: orders?.length || 0, paidCount: paid.length, ticketsTotal: tickets?.length || 0, checkedIn, byTier, leaderboard, trends };
     },
   });
 
@@ -724,6 +778,21 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">Revenue</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{formatMoney(data.revenue, currency)}</p><p className="text-xs text-muted-foreground">{data.paidCount}/{data.ordersCount} orders paid</p></CardContent></Card>
       <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">Tickets</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{data.ticketsTotal}</p><p className="text-xs text-muted-foreground">{data.checkedIn} checked in</p></CardContent></Card>
+
+      <Card className="md:col-span-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4" />Daily trends</CardTitle>
+          <p className="text-xs text-muted-foreground">Transactions, tickets, check-ins and revenue collected ({currency}) per day.</p>
+        </CardHeader>
+        <CardContent>
+          {data.trends.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No activity yet</p>
+          ) : (
+            <TrendsChart data={data.trends} currency={currency} />
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="md:col-span-2"><CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4" />Sales by tier</CardTitle></CardHeader><CardContent className="space-y-2">
         {Object.entries(data.byTier).length === 0 ? <p className="text-sm text-muted-foreground">No sales yet</p> :
           Object.entries(data.byTier).map(([n, c]) => {
@@ -736,6 +805,7 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
             );
           })}
       </CardContent></Card>
+
 
       <Card className="md:col-span-2">
         <CardHeader className="pb-2">
