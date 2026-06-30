@@ -148,9 +148,38 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "", onVerified }
         onKeyDown={(e) => e.key === "Enter" && submit()}
       />
       {wrongPassword && (
-        <p className="text-xs text-destructive">
-          That password doesn't match the existing account for this email. Try again or reset it.
-        </p>
+        <div className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+          <p className="text-xs text-destructive">
+            That password doesn't match an existing account. If you previously used an email login link, set a password now — we'll email you a secure link to choose one, and you can sign in with email and password from then on.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={busy}
+            onClick={async () => {
+              const clean = email.trim().toLowerCase();
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+                toast({ title: "Enter your email first", variant: "destructive" });
+                return;
+              }
+              setBusy(true);
+              try {
+                const { error } = await supabase.auth.resetPasswordForEmail(clean, {
+                  redirectTo: window.location.origin + "/reset-password",
+                });
+                if (error) throw error;
+                toast({ title: "Check your inbox", description: `We sent a link to ${clean} so you can set a password.` });
+              } catch (err: any) {
+                toast({ title: "Couldn't send link", description: err.message, variant: "destructive" });
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Email me a link to set my password
+          </Button>
+        </div>
       )}
       <Button className="w-full" onClick={submit} disabled={busy}>
         {busy ? "Please wait…" : "Continue"}
