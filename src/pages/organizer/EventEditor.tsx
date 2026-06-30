@@ -700,10 +700,10 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
     queryKey: ["event-analytics", eventId],
     queryFn: async () => {
       const [{ data: orders }, { data: tickets }] = await Promise.all([
-        supabase.from("orders").select("total_amount,status,created_at").eq("event_id", eventId),
+        supabase.from("orders").select("total_amount,status,created_at,paid_at").eq("event_id", eventId),
         supabase
           .from("tickets")
-          .select("id,checked_in_at,tier_id,metadata,ticket_tiers(name),orders!inner(status)")
+          .select("id,checked_in_at,tier_id,metadata,created_at,ticket_tiers(name),orders!inner(status)")
           .eq("event_id", eventId)
           .eq("orders.status", "paid"),
       ]);
@@ -724,7 +724,24 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
       const leaderboard = Object.entries(byClub)
         .map(([club, count]) => ({ club, count }))
         .sort((a, b) => b.count - a.count);
-      return { revenue, ordersCount: orders?.length || 0, paidCount: paid.length, ticketsTotal: tickets?.length || 0, checkedIn, byTier, leaderboard };
+
+      // Daily trends — orders/transactions, revenue, tickets, check-ins.
+      const dayKey = (iso: string) => new Date(iso).toISOString().slice(0, 10);
+      const trendMap: Record<string, { date: string; transactions: number; revenue: number; tickets: number; checkins: number }> = {};
+      const bump = (k: string) => (trendMap[k] = trendMap[k] || { date: k, transactions: 0, revenue: 0, tickets: 0, checkins: 0 });
+      paid.forEach((o: any) => {
+        const k = dayKey(o.paid_at || o.created_at);
+        const b = bump(k);
+        b.transactions += 1;
+        b.revenue += Number(o.total_amount || 0);
+      });
+      (tickets || []).forEach((t: any) => {
+        bump(dayKey(t.created_at)).tickets += 1;
+        if (t.checked_in_at) bump(dayKey(t.checked_in_at)).checkins += 1;
+      });
+      const trends = Object.values(trendMap).sort((a, b) => a.date.localeCompare(b.date));
+
+      return { revenue, ordersCount: orders?.length || 0, paidCount: paid.length, ticketsTotal: tickets?.length || 0, checkedIn, byTier, leaderboard, trends };
     },
   });
 
@@ -733,6 +750,21 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">Revenue</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{formatMoney(data.revenue, currency)}</p><p className="text-xs text-muted-foreground">{data.paidCount}/{data.ordersCount} orders paid</p></CardContent></Card>
       <Card><CardHeader className="pb-2"><CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">Tickets</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{data.ticketsTotal}</p><p className="text-xs text-muted-foreground">{data.checkedIn} checked in</p></CardContent></Card>
+
+      <Card className="md:col-span-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4" />Daily trends</CardTitle>
+          <p className="text-xs text-muted-foreground">Transactions, tickets, check-ins and revenue collected ({currency}) per day.</p>
+        </CardHeader>
+        <CardContent>
+          {data.trends.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No activity yet</p>
+          ) : (
+            <TrendsChart data={data.trends} currency={currency} />
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="md:col-span-2"><CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4" />Sales by tier</CardTitle></CardHeader><CardContent className="space-y-2">
         {Object.entries(data.byTier).length === 0 ? <p className="text-sm text-muted-foreground">No sales yet</p> :
           Object.entries(data.byTier).map(([n, c]) => {
@@ -745,6 +777,7 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
             );
           })}
       </CardContent></Card>
+
 
       <Card className="md:col-span-2">
         <CardHeader className="pb-2">
