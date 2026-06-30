@@ -452,7 +452,7 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
     queryFn: async () => {
       const { data } = await supabase
         .from("tickets")
-        .select("*,orders!inner(buyer_email,status,total_amount,currency,reference),ticket_tiers(name)")
+        .select("*,orders!inner(buyer_name,buyer_email,buyer_phone,status,total_amount,currency,reference),ticket_tiers(name)")
         .eq("event_id", eventId)
         .eq("orders.status", "paid")
         .order("created_at", { ascending: false });
@@ -473,6 +473,7 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                 <tr>
                   <th className="py-2">Holder</th>
                   <th>Email</th>
+                  <th>Phone</th>
                   <th>Type</th>
                   <th>Rotary club</th>
                   <th>Member ID</th>
@@ -487,10 +488,17 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                 {tickets.map((t: any) => {
                   const m = t.metadata || {};
                   const type = m.attendee_type as string | undefined;
+                  const phone = t.orders?.buyer_phone || "";
+                  const phoneDigits = phone.replace(/[^\d+]/g, "");
                   return (
                     <tr key={t.id} className="border-t border-border align-top">
                       <td className="py-2 font-medium">{t.holder_name || "—"}</td>
                       <td className="text-muted-foreground">{t.holder_email || t.orders?.buyer_email || "—"}</td>
+                      <td className="text-xs">
+                        {phone ? (
+                          <a href={`tel:${phoneDigits}`} className="text-primary hover:underline">{phone}</a>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
                       <td className="capitalize text-xs">
                         {type ? (
                           <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">{type}</span>
@@ -500,7 +508,7 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                       <td className="text-xs font-mono">{m.member_id || "—"}</td>
                       <td>{t.ticket_tiers?.name || "—"}</td>
                       <td className="font-mono text-xs">{t.code}</td>
-                      <td className="text-xs text-muted-foreground">{t.orders?.buyer_email || "—"}</td>
+                      <td className="text-xs text-muted-foreground">{t.orders?.buyer_name || t.orders?.buyer_email || "—"}</td>
                       <td className="text-xs"><span className={`capitalize ${t.orders?.status === "paid" ? "text-success" : "text-warning"}`}>{t.orders?.status}</span></td>
                       <td>{t.checked_in_at ? <span className="text-success text-xs">{formatDateTime(t.checked_in_at)}</span> : <span className="text-muted-foreground text-xs">—</span>}</td>
                     </tr>
@@ -508,6 +516,7 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                 })}
               </tbody>
             </table>
+
           </div>
         )}
       </CardContent>
