@@ -175,6 +175,18 @@ function normalizeSwarmbyteStatus(s: unknown): VerifyResult["status"] {
   return "pending";
 }
 
+function normalizeUgandanMsisdn(raw: string): string {
+  let digits = String(raw || "").replace(/\D/g, "");
+  if (digits.startsWith("00256")) digits = digits.slice(2);
+  if (digits.startsWith("2560")) digits = "256" + digits.slice(4);
+  if (digits.startsWith("0")) digits = "256" + digits.slice(1);
+  if (/^7\d{8}$/.test(digits)) digits = "256" + digits;
+  if (!/^2567\d{8}$/.test(digits)) {
+    throw new Error("Invalid phone number. Use 07XXXXXXXX or 2567XXXXXXXX.");
+  }
+  return digits;
+}
+
 export const SwarmbyteProvider: PaymentProvider = {
   code: "swarmbyte",
 
@@ -195,12 +207,7 @@ export const SwarmbyteProvider: PaymentProvider = {
     if (!Number.isFinite(amount) || amount < 500) {
       throw new Error("Amount must be an integer ≥ 500 UGX");
     }
-    let phone = (input.buyer.phone || "").replace(/[^\d+]/g, "");
-    if (phone.startsWith("00")) phone = "+" + phone.slice(2);
-    else if (phone.startsWith("0")) phone = "+256" + phone.slice(1);
-    else if (/^256\d+$/.test(phone)) phone = "+" + phone;
-    else if (/^7\d{8}$/.test(phone)) phone = "+256" + phone;
-    if (!phone) throw new Error("Buyer phone (msisdn) is required for Swarmbyte");
+    const phone = normalizeUgandanMsisdn(input.buyer.phone || "");
     const walletAddress = cfg.credentials.wallet_address || cfg.credentials.merchant_id || "";
     if (!walletAddress) throw new Error("Swarmbyte wallet_address not configured");
 

@@ -58,7 +58,7 @@ Deno.test("Swarmbyte initiate sends correct payload and idempotency key", async 
       intentId: "intent-1",
       amount: 5000,
       currency: "UGX",
-      buyer: { name: "Test", email: "t@x.com", phone: "+256700000000" },
+      buyer: { name: "Test", email: "t@x.com", phone: "+256 700 000 000" },
       callbackUrl: "https://cb.example.com/webhook",
       idempotencyKey: "intent-1",
     });
@@ -72,7 +72,7 @@ Deno.test("Swarmbyte initiate sends correct payload and idempotency key", async 
 
     const body = JSON.parse(collectCall.init.body as string);
     assertEquals(body.walletAddress, "WAL-TEST");
-    assertEquals(body.msisdn, "+256700000000");
+    assertEquals(body.msisdn, "256700000000");
     assertEquals(body.amount, 5000);
     assertEquals(body.reference, "ord-1");
     assertEquals(body.webhookUrl, "https://cb.example.com/webhook");
