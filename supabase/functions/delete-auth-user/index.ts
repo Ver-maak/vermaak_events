@@ -16,22 +16,26 @@ Deno.serve(async (req) => {
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const userClient = createClient(url, anon, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: claims } = await userClient.auth.getClaims(authHeader.replace("Bearer ", ""));
-    if (!claims?.claims?.sub) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    const token = authHeader.replace("Bearer ", "");
     const admin = createClient(url, service);
-    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", claims.claims.sub);
-    if (!roles?.some((r: any) => r.role === "super_admin")) {
-      return new Response(JSON.stringify({ error: "Forbidden — super admin only" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+    // Allow service-role bearer to bypass user check (used by admin tooling)
+    if (token !== service) {
+      const userClient = createClient(url, anon, {
+        global: { headers: { Authorization: authHeader } },
       });
+      const { data: claims } = await userClient.auth.getClaims(token);
+      if (!claims?.claims?.sub) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", claims.claims.sub);
+      if (!roles?.some((r: any) => r.role === "super_admin")) {
+        return new Response(JSON.stringify({ error: "Forbidden — super admin only" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const { email } = await req.json();
