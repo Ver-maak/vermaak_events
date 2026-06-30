@@ -69,20 +69,19 @@ const MoMoPaymentDialog = ({
     return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
   }, [open]);
 
-  const providerLabel = provider === "mtn_momo" ? "MTN Mobile Money" : "Airtel Money";
   const normalizePhone = (raw: string) => {
-    const digits = raw.replace(/[^\d+]/g, "");
-    if (digits.startsWith("+")) return digits;
-    if (digits.startsWith("256")) return "+" + digits;
-    if (digits.startsWith("0")) return "+256" + digits.slice(1);
-    if (/^[7][0-9]{8}$/.test(digits)) return "+256" + digits;
+    let digits = raw.replace(/\D/g, "");
+    if (digits.startsWith("00256")) digits = digits.slice(2);
+    if (digits.startsWith("2560")) digits = "256" + digits.slice(4);
+    if (digits.startsWith("0")) digits = "256" + digits.slice(1);
+    if (/^7\d{8}$/.test(digits)) digits = "256" + digits;
     return digits;
   };
   const normalizedPhone = normalizePhone(phone);
-  const validPhone = /^\+\d{9,15}$/.test(normalizedPhone);
+  const validPhone = /^2567\d{8}$/.test(normalizedPhone);
 
   const runFlow = async () => {
-    if (!validPhone) { setError("Enter a valid phone number"); return; }
+    if (!validPhone) { setError("Enter a valid Ugandan mobile money number"); return; }
     setError("");
     setFailure(null);
     cancelledRef.current = false;
@@ -187,7 +186,7 @@ const MoMoPaymentDialog = ({
             </div>
             <div className="space-y-2">
               <Label>Phone number</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+256 7XX XXX XXX" />
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0772 123 456 or +256 772 123 456" />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button className="w-full" onClick={runFlow}>Pay {formatMoney(grandTotal, currency)}</Button>
