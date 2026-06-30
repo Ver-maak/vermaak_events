@@ -13,6 +13,13 @@ import { Ticket, ArrowRight, AlertCircle } from "lucide-react";
 
 type LoginError = { kind: "invalid_credentials" | "unconfirmed" | "rate" | "other"; email: string; message: string };
 
+const sendSetPasswordLink = async (email: string) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+  if (error) throw error;
+};
+
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -120,13 +127,23 @@ const Auth = () => {
                     {loginError.kind === "invalid_credentials" && (
                       <>
                         <p className="text-xs">
-                          You entered <strong className="break-all">{loginError.email}</strong>. If that's not your account email, correct it above and try again. Passwords are case-sensitive.
+                          If you previously signed in using an email link (no password), tap <strong>Set your password</strong> below — we'll email you a secure link to choose one. From then on, you can sign in with your email and password.
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          <Button asChild size="sm" variant="secondary">
-                            <Link to={`/forgot-password?email=${encodeURIComponent(loginError.email)}`}>
-                              Reset password for this email
-                            </Link>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={async () => {
+                              try {
+                                await sendSetPasswordLink(loginError.email);
+                                toast({ title: "Check your inbox", description: `We sent a link to ${loginError.email} so you can set a password.` });
+                              } catch (err: any) {
+                                toast({ title: "Couldn't send link", description: err.message, variant: "destructive" });
+                              }
+                            }}
+                          >
+                            Set your password
                           </Button>
                           <Button type="button" size="sm" variant="outline" onClick={() => { setPassword(""); setLoginError(null); }}>
                             Try a different password
