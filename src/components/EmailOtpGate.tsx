@@ -14,20 +14,18 @@ interface Props {
 }
 
 /**
- * Lightweight checkout gate. The buyer enters name + email + password to
- * sign in or create an account inline — no magic link round-trip required.
- * If an account already exists for the email, we sign in; otherwise we
- * create one and sign in immediately.
+ * Seamless checkout gate. Buyer enters name + email + password once.
+ * We try to sign in first; if the account doesn't exist we transparently
+ * create it and sign them in — no mode switching required.
  */
 export const EmailOtpGate = ({ defaultEmail = "", defaultName = "", onVerified }: Props) => {
   const [email, setEmail] = useState(defaultEmail);
   const [name, setName] = useState(defaultName);
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [busy, setBusy] = useState(false);
+  const [wrongPassword, setWrongPassword] = useState(false);
   const verifiedRef = useRef(false);
 
-  // Notify caller when signed in
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user?.email && !verifiedRef.current) {
@@ -41,10 +39,6 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "", onVerified }
   const submit = async () => {
     const cleanEmail = email.trim().toLowerCase();
     const cleanName = name.trim();
-    if (mode === "signup" && !cleanName) {
-      toast({ title: "Name required", description: "Please tell us who's buying.", variant: "destructive" });
-      return;
-    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       toast({ title: "Invalid email", description: "Enter a valid email address", variant: "destructive" });
       return;
@@ -54,61 +48,62 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "", onVerified }
       return;
     }
     setBusy(true);
+    setWrongPassword(false);
     try {
-      if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-        if (error) {
-          const msg = (error.message || "").toLowerCase();
-          if (msg.includes("invalid login")) {
-            toast({
-              title: "Couldn't sign in",
-              description: "Wrong password, or you don't have an account yet. Switch to 'Create account' below if you're new.",
-              variant: "destructive",
-            });
-          } else {
-            toast({ title: "Sign-in failed", description: error.message, variant: "destructive" });
-          }
-          return;
-        }
-      } else {
-        const { data, error } = await supabase.auth.signUp({
+      // Try sign up first — if the email is new this signs them in immediately.
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: { full_name: cleanName || cleanEmail.split("@")[0] },
+          emailRedirectTo: window.location.origin + window.location.pathname + window.location.search,
+        },
+      });
+
+      const alreadyExists =
+        signUpError && /registered|already|exists/i.test(signUpError.message || "");
+
+      if (alreadyExists) {
+        // Existing account — sign in with the password they typed.
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
           email: cleanEmail,
           password,
-          options: {
-            data: { full_name: cleanName },
-            emailRedirectTo: window.location.origin + window.location.pathname + window.location.search,
-          },
         });
-        if (error) {
-          const msg = (error.message || "").toLowerCase();
-          if (msg.includes("registered") || msg.includes("already")) {
-            toast({
-              title: "Account exists",
-              description: "An account with this email already exists. Switch to 'Sign in' and enter your password.",
-              variant: "destructive",
-            });
-            setMode("signin");
-          } else {
-            toast({ title: "Sign-up failed", description: error.message, variant: "destructive" });
-          }
+        if (signInErr) {
+          setWrongPassword(true);
+          toast({
+            title: "Wrong password",
+            description: "An account with this email already exists. Enter your existing password to continue.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      if (signUpError) {
+        toast({ title: "Couldn't continue", description: signUpError.message, variant: "destructive" });
+        return;
+      }
+
+      // Brand new account
+      if (signUpData.user && !signUpData.session) {
+        // In case email confirmation is enabled, try to sign in directly.
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        });
+        if (signInErr) {
+          toast({
+            title: "Confirm your email",
+            description: "We sent a confirmation link to your inbox. Open it, then come back to continue.",
+          });
           return;
         }
-        if (data.user && !data.session) {
-          // Email confirmation enabled — try to sign them in directly
-          const { error: signInErr } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-          if (signInErr) {
-            toast({
-              title: "Confirm your email",
-              description: "We sent a confirmation link to your inbox. Open it, then come back to continue.",
-            });
-            return;
-          }
-        }
-        if (data.user) {
-          try {
-            await supabase.from("user_roles").insert({ user_id: data.user.id, role: "attendee" as any });
-          } catch {}
-        }
+      }
+      if (signUpData.user) {
+        try {
+          await supabase.from("user_roles").insert({ user_id: signUpData.user.id, role: "attendee" as any });
+        } catch {}
       }
     } finally {
       setBusy(false);
@@ -119,21 +114,20 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "", onVerified }
     <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
       <div className="flex items-center gap-2 text-sm font-medium">
         <Mail className="h-4 w-4 text-primary" />
-        {mode === "signin" ? "Sign in to continue" : "Create your account"}
+        Continue to payment
       </div>
+      <p className="text-xs text-muted-foreground">
+        Enter your details to continue. We'll create your account automatically if you're new, or sign you in if you've bought tickets before.
+      </p>
 
-      {mode === "signup" && (
-        <>
-          <Label className="text-xs">Full name</Label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Jane Doe"
-            autoComplete="name"
-            disabled={busy}
-          />
-        </>
-      )}
+      <Label className="text-xs">Full name</Label>
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Jane Doe"
+        autoComplete="name"
+        disabled={busy}
+      />
       <Label className="text-xs">Email address</Label>
       <Input
         type="email"
@@ -147,34 +141,20 @@ export const EmailOtpGate = ({ defaultEmail = "", defaultName = "", onVerified }
       <Input
         type="password"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={(e) => { setPassword(e.target.value); setWrongPassword(false); }}
         placeholder="At least 6 characters"
-        autoComplete={mode === "signin" ? "current-password" : "new-password"}
+        autoComplete="current-password"
         disabled={busy}
         onKeyDown={(e) => e.key === "Enter" && submit()}
       />
+      {wrongPassword && (
+        <p className="text-xs text-destructive">
+          That password doesn't match the existing account for this email. Try again or reset it.
+        </p>
+      )}
       <Button className="w-full" onClick={submit} disabled={busy}>
-        {busy ? "Please wait…" : mode === "signin" ? "Sign in & continue" : "Create account & continue"}
+        {busy ? "Please wait…" : "Continue"}
       </Button>
-      <div className="text-xs text-center">
-        {mode === "signin" ? (
-          <button
-            type="button"
-            onClick={() => setMode("signup")}
-            className="text-primary hover:underline"
-          >
-            New here? Create an account
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setMode("signin")}
-            className="text-primary hover:underline"
-          >
-            Already have an account? Sign in
-          </button>
-        )}
-      </div>
     </div>
   );
 };
