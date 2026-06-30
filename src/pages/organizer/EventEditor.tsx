@@ -15,6 +15,34 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { slugify, formatMoney, formatDateTime } from "@/lib/format";
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+const TrendsChart = ({ data, currency }: { data: { date: string; transactions: number; revenue: number; tickets: number; checkins: number }[]; currency: string }) => {
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString("en-UG", { month: "short", day: "numeric" });
+  const fmtMoney = (v: number) => new Intl.NumberFormat("en-UG", { notation: "compact", maximumFractionDigits: 1 }).format(v);
+  return (
+    <div className="w-full h-[340px]">
+      <ResponsiveContainer>
+        <ComposedChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+          <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 11 }} />
+          <YAxis yAxisId="left" tick={{ fontSize: 11 }} allowDecimals={false} />
+          <YAxis yAxisId="right" orientation="right" tickFormatter={fmtMoney} tick={{ fontSize: 11 }} />
+          <Tooltip
+            contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+            labelFormatter={(l) => fmtDate(l as string)}
+            formatter={(value: any, name: string) => name === "Revenue" ? [formatMoney(Number(value), currency), name] : [value, name]}
+          />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Bar yAxisId="left" dataKey="transactions" name="Transactions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+          <Bar yAxisId="left" dataKey="tickets" name="Tickets" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+          <Line yAxisId="left" dataKey="checkins" name="Check-ins" stroke="hsl(var(--success))" strokeWidth={2} dot={false} />
+          <Line yAxisId="right" dataKey="revenue" name="Revenue" stroke="hsl(var(--warning))" strokeWidth={2} dot={false} />
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
 
 // Convert an ISO/UTC timestamp into the "YYYY-MM-DDTHH:mm" string that
 // <input type="datetime-local"> expects, expressed in the user's LOCAL timezone.
