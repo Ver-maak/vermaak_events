@@ -255,6 +255,36 @@ const EventEditor = () => {
               </CardContent>
             </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><ToggleRight className="h-4 w-4 text-primary" />Event features</CardTitle>
+                <p className="text-xs text-muted-foreground">Toggle features on for this event. Defaults match the DRR Chain Handover Movie Night template.</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { key: "classification", label: "Attendee classification prompt", desc: "Ask each buyer if they're a Rotarian, Rotaractor or Guest (with club & member ID)." },
+                  { key: "leaderboard", label: "Rotaract club leaderboard", desc: "Show a ranked leaderboard of clubs in Analytics, with CSV / PDF export." },
+                  { key: "event_admins", label: "Event admins (up to 4)", desc: "Invite co-admins who can check in tickets and view orders." },
+                  { key: "momo_payment", label: "Mobile Money payment", desc: "Accept MTN & Airtel MoMo checkout via the configured provider." },
+                ].map((f) => {
+                  const flags = form.feature_flags as Record<string, boolean>;
+                  return (
+                    <div key={f.key} className="flex items-start justify-between gap-4 border border-border rounded-lg p-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{f.label}</p>
+                        <p className="text-xs text-muted-foreground">{f.desc}</p>
+                      </div>
+                      <Switch
+                        checked={!!flags[f.key]}
+                        onCheckedChange={(v) => setForm({ ...form, feature_flags: { ...flags, [f.key]: v } })}
+                      />
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
+
             <div className="flex items-center gap-3 flex-wrap">
               <Button onClick={() => save.mutate(undefined)} disabled={save.isPending} className="gap-2"><Save className="h-4 w-4" />Save draft</Button>
               {!isNew && form.status === "draft" && (
