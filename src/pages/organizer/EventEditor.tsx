@@ -208,7 +208,7 @@ const EventEditor = () => {
             <TabsTrigger value="attendees" disabled={isNew}>Attendees</TabsTrigger>
             <TabsTrigger value="pending" disabled={isNew}>Pending</TabsTrigger>
             <TabsTrigger value="analytics" disabled={isNew}>Analytics</TabsTrigger>
-            {canManage && !isNew && <TabsTrigger value="admins">Admins</TabsTrigger>}
+            {canManage && !isNew && form.feature_flags.event_admins && <TabsTrigger value="admins">Admins</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="details" className="space-y-6 pt-4">
