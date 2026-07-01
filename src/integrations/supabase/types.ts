@@ -163,6 +163,7 @@ export type Database = {
           currency: string
           description: string | null
           ends_at: string | null
+          feature_flags: Json
           id: string
           organization_id: string | null
           organizer_id: string
@@ -182,6 +183,7 @@ export type Database = {
           currency?: string
           description?: string | null
           ends_at?: string | null
+          feature_flags?: Json
           id?: string
           organization_id?: string | null
           organizer_id: string
@@ -201,6 +203,7 @@ export type Database = {
           currency?: string
           description?: string | null
           ends_at?: string | null
+          feature_flags?: Json
           id?: string
           organization_id?: string | null
           organizer_id?: string
