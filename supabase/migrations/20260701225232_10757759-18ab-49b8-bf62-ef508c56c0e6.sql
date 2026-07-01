@@ -1,0 +1,1 @@
+ALTER TABLE public.events ALTER COLUMN feature_flags SET DEFAULT '{"classification":false,"leaderboard":false,"event_admins":true,"momo_payment":true}'::jsonb;
