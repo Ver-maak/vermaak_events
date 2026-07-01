@@ -62,7 +62,9 @@ const EventEditor = () => {
   const [searchParams] = useSearchParams();
   const qc = useQueryClient();
 
-  const DEFAULT_FLAGS = { classification: true, leaderboard: true, event_admins: true, momo_payment: true };
+  // New events default to general (non-Rotaract) features. Enable Rotaract-specific
+  // features (attendee classification, club leaderboard) per event when needed.
+  const DEFAULT_FLAGS = { classification: false, leaderboard: false, event_admins: true, momo_payment: true };
   const [form, setForm] = useState({
     title: "", description: "", venue: "", city: "", category: "",
     cover_image_url: "", starts_at: "", ends_at: "", currency: "UGX", capacity: "",
