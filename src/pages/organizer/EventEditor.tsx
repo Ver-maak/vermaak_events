@@ -62,7 +62,9 @@ const EventEditor = () => {
   const [searchParams] = useSearchParams();
   const qc = useQueryClient();
 
-  const DEFAULT_FLAGS = { classification: true, leaderboard: true, event_admins: true, momo_payment: true };
+  // New events default to general (non-Rotaract) features. Enable Rotaract-specific
+  // features (attendee classification, club leaderboard) per event when needed.
+  const DEFAULT_FLAGS = { classification: false, leaderboard: false, event_admins: true, momo_payment: true };
   const [form, setForm] = useState({
     title: "", description: "", venue: "", city: "", category: "",
     cover_image_url: "", starts_at: "", ends_at: "", currency: "UGX", capacity: "",
@@ -258,12 +260,12 @@ const EventEditor = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2"><ToggleRight className="h-4 w-4 text-primary" />Event features</CardTitle>
-                <p className="text-xs text-muted-foreground">Toggle features on for this event. Defaults match the DRR Chain Handover Movie Night template.</p>
+                <p className="text-xs text-muted-foreground">Enable only what this event needs. Rotaract-specific features (attendee classification, club leaderboard) are off by default — turn them on for Rotaract events.</p>
               </CardHeader>
               <CardContent className="space-y-3">
                 {[
-                  { key: "classification", label: "Attendee classification prompt", desc: "Ask each buyer if they're a Rotarian, Rotaractor or Guest (with club & member ID)." },
-                  { key: "leaderboard", label: "Rotaract club leaderboard", desc: "Show a ranked leaderboard of clubs in Analytics, with CSV / PDF export." },
+                  { key: "classification", label: "Attendee classification prompt (Rotaract)", desc: "Ask each buyer if they're a Rotarian, Rotaractor or Guest (with club & member ID). Leave off for general events." },
+                  { key: "leaderboard", label: "Rotaract club leaderboard", desc: "Show a ranked leaderboard of clubs in Analytics, with CSV / PDF export. Only useful for Rotaract events." },
                   { key: "event_admins", label: "Event admins (up to 4)", desc: "Invite co-admins who can check in tickets and view orders." },
                   { key: "momo_payment", label: "Mobile Money payment", desc: "Accept MTN & Airtel MoMo checkout via the configured provider." },
                 ].map((f) => {
