@@ -887,6 +887,7 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle, showLeaderboard = true 
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 };
