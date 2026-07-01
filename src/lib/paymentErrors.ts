@@ -23,6 +23,11 @@ export interface FriendlyFailure {
 }
 
 const MAP: Array<{ test: RegExp; kind: PaymentFailureKind; title: string; description: string; retryable: boolean }> = [
+  // Provider TLS/certificate issues must be matched BEFORE the generic /expired/
+  // rule below, otherwise "certificate: Expired" is mis-reported as a timeout.
+  { test: /peer certificate|certificate|SSL|TLS handshake|Unknown Issuer/i, kind: "provider_unavailable",
+    title: "Payment provider unreachable (certificate issue)",
+    description: "Swarmbyte's API server has an invalid or expired TLS certificate, so we can't securely connect to it. This must be fixed by Swarmbyte — please contact their support.", retryable: false },
   { test: /LOW_BALANCE|PAYEE_LIMIT|LIMIT_REACHED|NOT_ALLOWED/i, kind: "insufficient_funds", title: "Mobile money declined the charge",
     description: "Your mobile money wallet has insufficient balance, has reached a transaction or daily limit, or isn't allowed to pay this amount. Top up or check your limits with your provider, then try again.", retryable: true },
   { test: /insufficient|balance|funds/i, kind: "insufficient_funds", title: "Insufficient balance",
