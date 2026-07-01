@@ -90,6 +90,7 @@ const EventEditor = () => {
         currency: event.currency || "UGX",
         capacity: event.capacity ? String(event.capacity) : "",
         status: event.status as any,
+        feature_flags: { ...DEFAULT_FLAGS, ...((event as any).feature_flags || {}) },
       });
     }
   }, [event]);
