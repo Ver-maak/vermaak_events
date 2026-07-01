@@ -115,6 +115,7 @@ const EventEditor = () => {
         currency: form.currency,
         capacity: form.capacity ? Number(form.capacity) : null,
         status: publish ? "published" : form.status,
+        feature_flags: form.feature_flags,
       };
       if (isNew) {
         payload.slug = slugify(form.title);
