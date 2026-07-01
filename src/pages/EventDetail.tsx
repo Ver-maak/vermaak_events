@@ -182,6 +182,10 @@ const EventDetail = () => {
       return;
     }
     if (totalQty < 1) return;
+    if (total > 0 && !momoEnabled) {
+      toast({ title: "Paid tickets unavailable", description: "The organizer hasn't enabled online payment for this event.", variant: "destructive" });
+      return;
+    }
     if (isRotaract) { setResumeStep("attendee"); setAttendeeOpen(true); return; }
     if (!buyerName || !buyerEmail) {
       toast({ title: "Missing info", description: "Name and email required", variant: "destructive" });
