@@ -758,7 +758,7 @@ const exportLeaderboardPdf = (eventTitle: string, rows: LeaderRow[]) => {
   w.document.close();
 };
 
-const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; currency: string; eventTitle: string }) => {
+const AnalyticsPanel = ({ eventId, currency, eventTitle, showLeaderboard = true }: { eventId: string; currency: string; eventTitle: string; showLeaderboard?: boolean }) => {
   const { data } = useQuery({
     queryKey: ["event-analytics", eventId],
     queryFn: async () => {
