@@ -62,10 +62,12 @@ const EventEditor = () => {
   const [searchParams] = useSearchParams();
   const qc = useQueryClient();
 
+  const DEFAULT_FLAGS = { classification: true, leaderboard: true, event_admins: true, momo_payment: true };
   const [form, setForm] = useState({
     title: "", description: "", venue: "", city: "", category: "",
     cover_image_url: "", starts_at: "", ends_at: "", currency: "UGX", capacity: "",
     status: "draft" as "draft" | "published" | "cancelled" | "completed",
+    feature_flags: { ...DEFAULT_FLAGS },
   });
 
   const { data: event } = useQuery({
