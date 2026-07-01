@@ -90,8 +90,10 @@ const EventDetail = () => {
       return data;
     },
   });
-  // Always classify attendees (Rotarian / Rotaractor / Guest) for every event.
-  const isRotaract = true;
+  // Per-event feature flags with safe defaults (existing events remain fully-featured).
+  const flags = { classification: true, leaderboard: true, event_admins: true, momo_payment: true, ...((event as any)?.feature_flags || {}) };
+  const isRotaract = !!flags.classification;
+  const momoEnabled = !!flags.momo_payment;
 
   const setQty = (tierId: string, q: number) => setQuantities((p) => ({ ...p, [tierId]: Math.max(0, q) }));
 
