@@ -276,7 +276,7 @@ const EventEditor = () => {
                       </div>
                       <Switch
                         checked={!!flags[f.key]}
-                        onCheckedChange={(v) => setForm({ ...form, feature_flags: { ...flags, [f.key]: v } })}
+                        onCheckedChange={(v) => setForm({ ...form, feature_flags: { ...flags, [f.key]: v } as typeof form.feature_flags })}
                       />
                     </div>
                   );
