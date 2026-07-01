@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Send, Plus, Trash2, ExternalLink, Users, BarChart3, Upload, X, ImageIcon, Loader2, ShieldCheck, UserPlus, Mail } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { ArrowLeft, Save, Send, Plus, Trash2, ExternalLink, Users, BarChart3, Upload, X, ImageIcon, Loader2, ShieldCheck, UserPlus, Mail, ToggleRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
@@ -61,10 +62,12 @@ const EventEditor = () => {
   const [searchParams] = useSearchParams();
   const qc = useQueryClient();
 
+  const DEFAULT_FLAGS = { classification: true, leaderboard: true, event_admins: true, momo_payment: true };
   const [form, setForm] = useState({
     title: "", description: "", venue: "", city: "", category: "",
     cover_image_url: "", starts_at: "", ends_at: "", currency: "UGX", capacity: "",
     status: "draft" as "draft" | "published" | "cancelled" | "completed",
+    feature_flags: { ...DEFAULT_FLAGS },
   });
 
   const { data: event } = useQuery({
@@ -87,6 +90,7 @@ const EventEditor = () => {
         currency: event.currency || "UGX",
         capacity: event.capacity ? String(event.capacity) : "",
         status: event.status as any,
+        feature_flags: { ...DEFAULT_FLAGS, ...((event as any).feature_flags || {}) },
       });
     }
   }, [event]);
@@ -111,6 +115,7 @@ const EventEditor = () => {
         currency: form.currency,
         capacity: form.capacity ? Number(form.capacity) : null,
         status: publish ? "published" : form.status,
+        feature_flags: form.feature_flags,
       };
       if (isNew) {
         payload.slug = slugify(form.title);
@@ -203,7 +208,7 @@ const EventEditor = () => {
             <TabsTrigger value="attendees" disabled={isNew}>Attendees</TabsTrigger>
             <TabsTrigger value="pending" disabled={isNew}>Pending</TabsTrigger>
             <TabsTrigger value="analytics" disabled={isNew}>Analytics</TabsTrigger>
-            {canManage && !isNew && <TabsTrigger value="admins">Admins</TabsTrigger>}
+            {canManage && !isNew && form.feature_flags.event_admins && <TabsTrigger value="admins">Admins</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="details" className="space-y-6 pt-4">
@@ -249,6 +254,36 @@ const EventEditor = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><ToggleRight className="h-4 w-4 text-primary" />Event features</CardTitle>
+                <p className="text-xs text-muted-foreground">Toggle features on for this event. Defaults match the DRR Chain Handover Movie Night template.</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { key: "classification", label: "Attendee classification prompt", desc: "Ask each buyer if they're a Rotarian, Rotaractor or Guest (with club & member ID)." },
+                  { key: "leaderboard", label: "Rotaract club leaderboard", desc: "Show a ranked leaderboard of clubs in Analytics, with CSV / PDF export." },
+                  { key: "event_admins", label: "Event admins (up to 4)", desc: "Invite co-admins who can check in tickets and view orders." },
+                  { key: "momo_payment", label: "Mobile Money payment", desc: "Accept MTN & Airtel MoMo checkout via the configured provider." },
+                ].map((f) => {
+                  const flags = form.feature_flags as Record<string, boolean>;
+                  return (
+                    <div key={f.key} className="flex items-start justify-between gap-4 border border-border rounded-lg p-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{f.label}</p>
+                        <p className="text-xs text-muted-foreground">{f.desc}</p>
+                      </div>
+                      <Switch
+                        checked={!!flags[f.key]}
+                        onCheckedChange={(v) => setForm({ ...form, feature_flags: { ...flags, [f.key]: v } as typeof form.feature_flags })}
+                      />
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+
 
             <div className="flex items-center gap-3 flex-wrap">
               <Button onClick={() => save.mutate(undefined)} disabled={save.isPending} className="gap-2"><Save className="h-4 w-4" />Save draft</Button>
@@ -315,8 +350,8 @@ const EventEditor = () => {
           <TabsContent value="tiers" className="pt-4"><TiersPanel eventId={id!} currency={form.currency} /></TabsContent>
           <TabsContent value="attendees" className="pt-4"><AttendeesPanel eventId={id!} /></TabsContent>
           <TabsContent value="pending" className="pt-4"><PendingOrdersPanel eventId={id!} /></TabsContent>
-          <TabsContent value="analytics" className="pt-4"><AnalyticsPanel eventId={id!} currency={form.currency} eventTitle={form.title} /></TabsContent>
-          {canManage && !isNew && <TabsContent value="admins" className="pt-4"><AdminsPanel eventId={id!} /></TabsContent>}
+          <TabsContent value="analytics" className="pt-4"><AnalyticsPanel eventId={id!} currency={form.currency} eventTitle={form.title} showLeaderboard={form.feature_flags.leaderboard} /></TabsContent>
+          {canManage && !isNew && form.feature_flags.event_admins && <TabsContent value="admins" className="pt-4"><AdminsPanel eventId={id!} /></TabsContent>}
         </Tabs>
           );
         })()}
@@ -723,7 +758,7 @@ const exportLeaderboardPdf = (eventTitle: string, rows: LeaderRow[]) => {
   w.document.close();
 };
 
-const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; currency: string; eventTitle: string }) => {
+const AnalyticsPanel = ({ eventId, currency, eventTitle, showLeaderboard = true }: { eventId: string; currency: string; eventTitle: string; showLeaderboard?: boolean }) => {
   const { data } = useQuery({
     queryKey: ["event-analytics", eventId],
     queryFn: async () => {
@@ -807,6 +842,7 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
       </CardContent></Card>
 
 
+      {showLeaderboard && (
       <Card className="md:col-span-2">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -851,6 +887,7 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle }: { eventId: string; cu
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 };

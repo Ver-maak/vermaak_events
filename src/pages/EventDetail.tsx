@@ -90,8 +90,10 @@ const EventDetail = () => {
       return data;
     },
   });
-  // Always classify attendees (Rotarian / Rotaractor / Guest) for every event.
-  const isRotaract = true;
+  // Per-event feature flags with safe defaults (existing events remain fully-featured).
+  const flags = { classification: true, leaderboard: true, event_admins: true, momo_payment: true, ...((event as any)?.feature_flags || {}) };
+  const isRotaract = !!flags.classification;
+  const momoEnabled = !!flags.momo_payment;
 
   const setQty = (tierId: string, q: number) => setQuantities((p) => ({ ...p, [tierId]: Math.max(0, q) }));
 
@@ -180,6 +182,10 @@ const EventDetail = () => {
       return;
     }
     if (totalQty < 1) return;
+    if (total > 0 && !momoEnabled) {
+      toast({ title: "Paid tickets unavailable", description: "The organizer hasn't enabled online payment for this event.", variant: "destructive" });
+      return;
+    }
     if (isRotaract) { setResumeStep("attendee"); setAttendeeOpen(true); return; }
     if (!buyerName || !buyerEmail) {
       toast({ title: "Missing info", description: "Name and email required", variant: "destructive" });

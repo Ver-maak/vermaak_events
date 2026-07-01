@@ -1,0 +1,3 @@
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS feature_flags jsonb NOT NULL DEFAULT '{"classification":true,"leaderboard":true,"event_admins":true,"momo_payment":true}'::jsonb;
+-- Backfill existing events so nothing that was enabled becomes hidden
+UPDATE public.events SET feature_flags = '{"classification":true,"leaderboard":true,"event_admins":true,"momo_payment":true}'::jsonb WHERE feature_flags IS NULL OR feature_flags = '{}'::jsonb;
