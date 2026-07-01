@@ -842,6 +842,7 @@ const AnalyticsPanel = ({ eventId, currency, eventTitle, showLeaderboard = true 
       </CardContent></Card>
 
 
+      {showLeaderboard && (
       <Card className="md:col-span-2">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-3 flex-wrap">
