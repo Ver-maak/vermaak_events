@@ -90,6 +90,21 @@ const Dashboard = () => {
     },
   });
 
+  const { data: eventFees } = useQuery({
+    queryKey: ["platform-event-fees-summary"],
+    enabled: isSuperAdmin,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("platform_event_fees_summary");
+      if (error) throw error;
+      return data as {
+        past_fee_ugx: number;
+        upcoming_fee_ugx: number;
+        past_event_count: number;
+        upcoming_event_count: number;
+      };
+    },
+  });
+
   const becomeOrganizer = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
@@ -206,8 +221,20 @@ const Dashboard = () => {
             <StatCard
               title="Platform fees collected"
               value={formatMoney(platformFees?.total || 0, "UGX")}
-              subtitle={`${platformFees?.count ?? 0} transactions`}
+              subtitle={`${platformFees?.count ?? 0} wallet transactions`}
               icon={<DollarSign className="h-5 w-5" />}
+            />
+            <StatCard
+              title="Fees from past events"
+              value={formatMoney(eventFees?.past_fee_ugx || 0, "UGX")}
+              subtitle={`${eventFees?.past_event_count ?? 0} events completed`}
+              icon={<Calendar className="h-5 w-5" />}
+            />
+            <StatCard
+              title="Fees from upcoming events"
+              value={formatMoney(eventFees?.upcoming_fee_ugx || 0, "UGX")}
+              subtitle={`${eventFees?.upcoming_event_count ?? 0} events selling`}
+              icon={<TrendingUp className="h-5 w-5" />}
             />
           </div>
         )}
