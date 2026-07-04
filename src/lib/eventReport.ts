@@ -418,10 +418,16 @@ export async function generateEventReport(event: EventRow): Promise<void> {
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+    const ph = doc.internal.pageSize.getHeight();
+    if (logoDataUrl) {
+      try {
+        doc.addImage(logoDataUrl, "PNG", margin, ph - 32, 18, 18);
+      } catch { /* ignore */ }
+    }
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin, doc.internal.pageSize.getHeight() - 20, { align: "right" });
-    doc.text(event.title, margin, doc.internal.pageSize.getHeight() - 20);
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin, ph - 20, { align: "right" });
+    doc.text(event.title, margin + 24, ph - 20);
   }
 
   const safeName = event.title.replace(/[^a-z0-9]+/gi, "_").slice(0, 60);
