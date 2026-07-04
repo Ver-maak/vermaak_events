@@ -391,6 +391,17 @@ const TiersPanel = ({ eventId, currency }: { eventId: string; currency: string }
     mutationFn: async (tid: string) => { const { error } = await supabase.from("ticket_tiers").delete().eq("id", tid); if (error) throw error; },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tiers-edit", eventId] }),
   });
+  const toggleActive = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      const { error } = await supabase.from("ticket_tiers").update({ is_active: active }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["tiers-edit", eventId] });
+      toast({ title: v.active ? "Tier enabled" : "Tier disabled", description: v.active ? "Buyers can now select this tier." : "This tier is hidden from buyers." });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
 
   return (
     <div className="space-y-4">
@@ -400,12 +411,22 @@ const TiersPanel = ({ eventId, currency }: { eventId: string; currency: string }
           {!tiers || tiers.length === 0 ? <p className="text-sm text-muted-foreground py-4 text-center">No tiers yet — add one below</p> :
             <div className="space-y-2">
               {tiers.map((t) => (
-                <div key={t.id} className="flex items-center justify-between border border-border rounded-lg p-3">
+                <div key={t.id} className={`flex items-center justify-between border border-border rounded-lg p-3 ${t.is_active === false ? "opacity-60" : ""}`}>
                   <div>
-                    <p className="font-medium">{t.name}</p>
+                    <p className="font-medium flex items-center gap-2">{t.name}{t.is_active === false && <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Disabled</span>}</p>
                     <p className="text-xs text-muted-foreground">{Number(t.price) === 0 ? "Free" : formatMoney(Number(t.price), t.currency)} • {t.sold || 0}/{t.quantity ?? "∞"} sold</p>
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => del.mutate(t.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mr-1">
+                      <span className="text-xs text-muted-foreground hidden sm:inline">{t.is_active === false ? "Off" : "On"}</span>
+                      <Switch
+                        checked={t.is_active !== false}
+                        onCheckedChange={(v) => toggleActive.mutate({ id: t.id, active: v })}
+                        disabled={toggleActive.isPending}
+                      />
+                    </div>
+                    <Button size="icon" variant="ghost" onClick={() => del.mutate(t.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
                 </div>
               ))}
             </div>}
