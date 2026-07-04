@@ -830,6 +830,44 @@ export type Database = {
         }
         Relationships: []
       }
+      short_links: {
+        Row: {
+          click_count: number
+          created_at: string
+          created_by: string | null
+          event_id: string | null
+          id: string
+          slug: string
+          target_url: string
+        }
+        Insert: {
+          click_count?: number
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          id?: string
+          slug: string
+          target_url: string
+        }
+        Update: {
+          click_count?: number
+          created_at?: string
+          created_by?: string | null
+          event_id?: string | null
+          id?: string
+          slug?: string
+          target_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "short_links_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_tiers: {
         Row: {
           created_at: string
@@ -1238,6 +1276,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_short_link_click: {
+        Args: { _slug: string }
+        Returns: undefined
       }
       invite_event_admin: {
         Args: { _email: string; _event_id: string }
