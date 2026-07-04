@@ -310,14 +310,44 @@ const EventDetail = () => {
               size="sm"
               className="gap-1.5"
               onClick={async () => {
-                const url = `${window.location.origin}/events/${event.slug}`;
+                const longUrl = `${window.location.origin}/events/${event.slug}`;
+                let url = longUrl;
+                try {
+                  // Reuse an existing short link for this event, or create one
+                  const { data: existing } = await (supabase as any)
+                    .from("short_links")
+                    .select("slug")
+                    .eq("event_id", event.id)
+                    .order("created_at", { ascending: true })
+                    .limit(1)
+                    .maybeSingle();
+                  let slug: string | undefined = existing?.slug;
+                  if (!slug) {
+                    const { data: sess } = await supabase.auth.getSession();
+                    const uid = sess.session?.user.id;
+                    if (uid) {
+                      const gen = () => Math.random().toString(36).slice(2, 8);
+                      for (let i = 0; i < 4 && !slug; i++) {
+                        const candidate = gen();
+                        const { data: created, error } = await (supabase as any)
+                          .from("short_links")
+                          .insert({ slug: candidate, target_url: longUrl, event_id: event.id, created_by: uid })
+                          .select("slug")
+                          .maybeSingle();
+                        if (!error && created?.slug) slug = created.slug;
+                      }
+                    }
+                  }
+                  if (slug) url = `${window.location.origin}/s/${slug}`;
+                } catch { /* fall back to long url */ }
+
                 const shareData = { title: event.title, text: `Check out ${event.title}`, url };
                 try {
                   if (navigator.share && /mobile|android|iphone/i.test(navigator.userAgent)) {
                     await navigator.share(shareData);
                   } else {
                     await navigator.clipboard.writeText(url);
-                    toast({ title: "Link copied!", description: "Share it anywhere you like." });
+                    toast({ title: "Short link copied!", description: url });
                   }
                 } catch (e: any) {
                   if (e?.name !== "AbortError") {
