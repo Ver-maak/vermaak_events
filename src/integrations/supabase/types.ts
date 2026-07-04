@@ -1308,6 +1308,7 @@ export type Database = {
         Args: { _provider_ref: string; _raw: Json; _status: string }
         Returns: Json
       }
+      platform_event_fees_summary: { Args: never; Returns: Json }
       quote_event_fee: {
         Args: { _amount: number; _event_id: string }
         Returns: Json
