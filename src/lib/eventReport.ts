@@ -285,6 +285,20 @@ export async function generateEventReport(event: EventRow): Promise<void> {
       margin: { left: margin, right: margin },
     });
     y = (doc as any).lastAutoTable.finalY + 20;
+
+    // Revenue by tier chart
+    const tierChartData = tiers
+      .map((t: any) => {
+        const tierTickets = paidTickets.filter((tk: any) => tk.tier_id === t.id);
+        return { label: t.name, value: Number(t.price || 0) * tierTickets.length };
+      })
+      .filter((d) => d.value > 0);
+    if (tierChartData.length > 0) {
+      const needed = 30 + tierChartData.length * 18;
+      y = ensureSpace(doc, y, needed, margin);
+      drawHBarChart(doc, margin, y, pageWidth - margin * 2, tierChartData, "Revenue by tier", (n) => formatMoney(n, currency));
+      y += needed + 10;
+    }
   }
 
   // Payment method breakdown
@@ -307,6 +321,16 @@ export async function generateEventReport(event: EventRow): Promise<void> {
       margin: { left: margin, right: margin },
     });
     y = (doc as any).lastAutoTable.finalY + 20;
+
+    // Pie chart of payment methods
+    const pieData = Object.entries(methods).map(([label, value]) => ({ label, value }));
+    if (pieData.length > 0) {
+      const r = 60;
+      const needed = r * 2 + 40;
+      y = ensureSpace(doc, y, needed, margin);
+      drawPieChart(doc, margin + r + 10, y + r + 10, r, pieData, "Revenue share by payment method", (n) => formatMoney(n, currency));
+      y += needed + 10;
+    }
   }
 
   // Sales trend over time
@@ -325,6 +349,29 @@ export async function generateEventReport(event: EventRow): Promise<void> {
       margin: { left: margin, right: margin },
     });
     y = (doc as any).lastAutoTable.finalY + 20;
+
+    // Bar chart of sales trend
+    const trendData = sortedTrend.map(([date, count]) => ({ label: date, value: count }));
+    const chartH = 140;
+    y = ensureSpace(doc, y, chartH + 20, margin);
+    drawBarChart(doc, margin, y, pageWidth - margin * 2, chartH, trendData, "Paid orders over time");
+    y += chartH + 10;
+  }
+
+  // Check-in vs no-show chart
+  if (paidTickets.length > 0) {
+    const noShow = paidTickets.length - checkedIn.length;
+    const attendanceData = [
+      { label: "Checked in", value: checkedIn.length },
+      { label: "No-show", value: noShow },
+    ].filter((d) => d.value > 0);
+    if (attendanceData.length > 0) {
+      const r = 55;
+      const needed = r * 2 + 40;
+      y = ensureSpace(doc, y, needed, margin);
+      drawPieChart(doc, margin + r + 10, y + r + 10, r, attendanceData, "Attendance", (n) => String(n));
+      y += needed + 10;
+    }
   }
 
   // Notes / disclaimer
