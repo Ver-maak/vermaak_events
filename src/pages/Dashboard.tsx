@@ -76,6 +76,20 @@ const Dashboard = () => {
     },
   });
 
+  const { data: platformFees } = useQuery({
+    queryKey: ["platform-fees-collected"],
+    enabled: isSuperAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fee_audit_logs")
+        .select("fee_ugx,context");
+      if (error) throw error;
+      const rows = (data || []).filter((r: any) => r.context !== "estimate");
+      const total = rows.reduce((s: number, r: any) => s + Number(r.fee_ugx || 0), 0);
+      return { total, count: rows.length };
+    },
+  });
+
   const becomeOrganizer = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
