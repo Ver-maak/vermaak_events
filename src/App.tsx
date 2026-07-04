@@ -31,6 +31,7 @@ import ChangePassword from "./pages/ChangePassword";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import ShortLinkRedirect from "./pages/ShortLinkRedirect";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,8 @@ const App = () => (
             <Route path="/events" element={<Browse />} />
             <Route path="/events/:slug" element={<EventDetail />} />
             <Route path="/legal/:doc" element={<Legal />} />
+            <Route path="/s/:slug" element={<ShortLinkRedirect />} />
+
 
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/dashboard/my-tickets" element={<ProtectedRoute><MyTickets /></ProtectedRoute>} />
