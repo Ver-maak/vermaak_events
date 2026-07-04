@@ -16,6 +16,16 @@ type EventRow = {
   organizer_id?: string | null;
 };
 
+function groupByDate(dates: (string | null | undefined)[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (const d of dates) {
+    if (!d) continue;
+    const key = new Date(d).toLocaleDateString("en-UG", { day: "2-digit", month: "short", year: "numeric" });
+    map[key] = (map[key] || 0) + 1;
+  }
+  return map;
+}
+
 export async function generateEventReport(event: EventRow): Promise<void> {
   // Fetch data in parallel
   const [{ data: tiers }, { data: orders }, { data: tickets }] = await Promise.all([
@@ -24,12 +34,26 @@ export async function generateEventReport(event: EventRow): Promise<void> {
     supabase.from("tickets").select("id,tier_id,holder_name,holder_email,checked_in_at,created_at,orders!inner(status)").eq("event_id", event.id),
   ]);
 
-  const paidOrders = (orders || []).filter((o) => o.status === "paid");
-  const pendingOrders = (orders || []).filter((o) => o.status === "pending");
+  const allOrders = orders || [];
+  const paidOrders = allOrders.filter((o) => o.status === "paid");
+  const pendingOrders = allOrders.filter((o) => o.status === "pending");
+  const cancelledOrders = allOrders.filter((o) => o.status === "cancelled" || o.status === "refunded");
   const paidTickets = (tickets || []).filter((t: any) => t.orders?.status === "paid");
   const checkedIn = paidTickets.filter((t: any) => t.checked_in_at);
   const revenue = paidOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
   const currency = event.currency || "UGX";
+  const avgOrderValue = paidOrders.length ? revenue / paidOrders.length : 0;
+
+  // Payment method breakdown
+  const methods: Record<string, number> = {};
+  for (const o of paidOrders) {
+    const m = o.payment_method || "Other";
+    methods[m] = (methods[m] || 0) + Number(o.total_amount || 0);
+  }
+
+  // Sales trend over time (paid_at preferred, fallback created_at)
+  const salesTrend = groupByDate(paidOrders.map((o) => o.paid_at || o.created_at));
+  const sortedTrend = Object.entries(salesTrend).sort((a, b) => a[0].localeCompare(b[0]));
 
   // Fee estimate via existing edge function (best-effort)
   let feeTotal = 0;
@@ -89,7 +113,9 @@ export async function generateEventReport(event: EventRow): Promise<void> {
       ["Attendees checked in", `${checkedIn.length} (${paidTickets.length ? Math.round((checkedIn.length / paidTickets.length) * 100) : 0}%)`],
       ["Paid orders", String(paidOrders.length)],
       ["Pending orders", String(pendingOrders.length)],
+      ["Cancelled / refunded orders", String(cancelledOrders.length)],
       ["Gross revenue", formatMoney(revenue, currency)],
+      ["Average order value", formatMoney(avgOrderValue, currency)],
       ["Platform fees (est.)", formatMoney(feeTotal, currency)],
       ["Net to organizer", formatMoney(revenue - feeTotal, currency)],
     ],
@@ -127,38 +153,62 @@ export async function generateEventReport(event: EventRow): Promise<void> {
     y = (doc as any).lastAutoTable.finalY + 20;
   }
 
-  // Recent paid orders (up to 25)
+  // Payment method breakdown
   if (paidOrders.length > 0) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text("Paid orders", margin, y);
+    doc.text("Payment methods", margin, y);
     y += 4;
-    const sorted = [...paidOrders].sort((a, b) => (b.paid_at || b.created_at || "").localeCompare(a.paid_at || a.created_at || ""));
     autoTable(doc, {
       startY: y + 4,
       theme: "grid",
-      styles: { fontSize: 9, cellPadding: 5 },
+      styles: { fontSize: 10, cellPadding: 6 },
       headStyles: { fillColor: [20, 30, 55], textColor: 255 },
-      head: [["Buyer", "Email", "Amount", "Method", "Paid at"]],
-      body: sorted.slice(0, 40).map((o) => [
-        o.buyer_name || "—",
-        o.buyer_email || "—",
-        formatMoney(Number(o.total_amount || 0), o.currency || currency),
-        o.payment_method || "—",
-        o.paid_at ? formatDateTime(o.paid_at) : "—",
+      head: [["Method", "Total collected", "% of revenue"]],
+      body: Object.entries(methods).map(([method, total]) => [
+        method,
+        formatMoney(total, currency),
+        `${revenue ? Math.round((total / revenue) * 100) : 0}%`,
       ]),
       margin: { left: margin, right: margin },
     });
-    if (paidOrders.length > 40) {
-      const fy = (doc as any).lastAutoTable.finalY + 10;
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(9);
-      doc.setTextColor(120, 120, 120);
-      doc.text(`+${paidOrders.length - 40} more orders not shown`, margin, fy);
-    }
+    y = (doc as any).lastAutoTable.finalY + 20;
   }
 
-  // Footer on last page
+  // Sales trend over time
+  if (sortedTrend.length > 0) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Sales trend (paid orders by date)", margin, y);
+    y += 4;
+    autoTable(doc, {
+      startY: y + 4,
+      theme: "striped",
+      styles: { fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: [20, 30, 55], textColor: 255 },
+      head: [["Date", "Paid orders"]],
+      body: sortedTrend.map(([date, count]) => [date, String(count)]),
+      margin: { left: margin, right: margin },
+    });
+    y = (doc as any).lastAutoTable.finalY + 20;
+  }
+
+  // Notes / disclaimer
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  doc.setTextColor(120, 120, 120);
+  const notes = [
+    "Figures are based on orders and tickets recorded in EnventSuite at the time this report was generated.",
+    "Platform fees are estimated and may differ from final settlement invoices.",
+    "For questions, contact the EnventSuite support team.",
+  ];
+  for (const line of notes) {
+    const wrapped = doc.splitTextToSize(line, pageWidth - margin * 2);
+    doc.text(wrapped, margin, y);
+    y += (wrapped.length * 11) + 6;
+  }
+
+  // Footer on every page
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -171,3 +221,4 @@ export async function generateEventReport(event: EventRow): Promise<void> {
   const safeName = event.title.replace(/[^a-z0-9]+/gi, "_").slice(0, 60);
   doc.save(`${safeName}_report.pdf`);
 }
+
