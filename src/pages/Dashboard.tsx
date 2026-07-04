@@ -76,6 +76,20 @@ const Dashboard = () => {
     },
   });
 
+  const { data: platformFees } = useQuery({
+    queryKey: ["platform-fees-collected"],
+    enabled: isSuperAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fee_audit_logs")
+        .select("fee_ugx,context");
+      if (error) throw error;
+      const rows = (data || []).filter((r: any) => r.context !== "estimate");
+      const total = rows.reduce((s: number, r: any) => s + Number(r.fee_ugx || 0), 0);
+      return { total, count: rows.length };
+    },
+  });
+
   const becomeOrganizer = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
@@ -186,6 +200,19 @@ const Dashboard = () => {
             <StatCard title="Revenue" value={formatMoney(orgStats?.revenue || 0)} subtitle="Paid orders" icon={<DollarSign className="h-5 w-5" />} />
           </div>
         )}
+
+        {isSuperAdmin && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              title="Platform fees collected"
+              value={formatMoney(platformFees?.total || 0, "UGX")}
+              subtitle={`${platformFees?.count ?? 0} transactions`}
+              icon={<DollarSign className="h-5 w-5" />}
+            />
+          </div>
+        )}
+
+
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isOrganizer && (
