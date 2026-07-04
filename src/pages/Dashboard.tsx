@@ -201,6 +201,19 @@ const Dashboard = () => {
           </div>
         )}
 
+        {isSuperAdmin && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              title="Platform fees collected"
+              value={formatMoney(platformFees?.total || 0, "UGX")}
+              subtitle={`${platformFees?.count ?? 0} transactions`}
+              icon={<DollarSign className="h-5 w-5" />}
+            />
+          </div>
+        )}
+
+
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isOrganizer && (
             <Card>
