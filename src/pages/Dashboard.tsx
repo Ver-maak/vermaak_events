@@ -90,6 +90,21 @@ const Dashboard = () => {
     },
   });
 
+  const { data: eventFees } = useQuery({
+    queryKey: ["platform-event-fees-summary"],
+    enabled: isSuperAdmin,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("platform_event_fees_summary");
+      if (error) throw error;
+      return data as {
+        past_fee_ugx: number;
+        upcoming_fee_ugx: number;
+        past_event_count: number;
+        upcoming_event_count: number;
+      };
+    },
+  });
+
   const becomeOrganizer = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
