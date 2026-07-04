@@ -189,9 +189,29 @@ const EventEditor = () => {
       <div className="space-y-6 max-w-5xl">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <Link to="/dashboard/events" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" />All events</Link>
-          {!isNew && event?.status === "published" && (
-            <Link to={`/events/${event.slug}`} target="_blank"><Button variant="outline" size="sm" className="gap-1"><ExternalLink className="h-3.5 w-3.5" />View public page</Button></Link>
-          )}
+          <div className="flex items-center gap-2">
+            {!isNew && event && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1"
+                onClick={async () => {
+                  try {
+                    toast({ title: "Preparing report…", description: "Generating a PDF for this event." });
+                    await generateEventReport(event as any);
+                    toast({ title: "Report downloaded", description: "Share the PDF with your client." });
+                  } catch (e: any) {
+                    toast({ title: "Couldn't generate report", description: e?.message || "Try again", variant: "destructive" });
+                  }
+                }}
+              >
+                <FileText className="h-3.5 w-3.5" />Download report
+              </Button>
+            )}
+            {!isNew && event?.status === "published" && (
+              <Link to={`/events/${event.slug}`} target="_blank"><Button variant="outline" size="sm" className="gap-1"><ExternalLink className="h-3.5 w-3.5" />View public page</Button></Link>
+            )}
+          </div>
         </div>
 
         <div>
