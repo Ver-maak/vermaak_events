@@ -206,7 +206,7 @@ const EventEditor = () => {
         <Tabs defaultValue={initialTab}>
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="tiers" disabled={isNew}>Tickets</TabsTrigger>
+            {form.feature_flags.price_tiers && <TabsTrigger value="tiers" disabled={isNew}>Tickets</TabsTrigger>}
             <TabsTrigger value="attendees" disabled={isNew}>Attendees</TabsTrigger>
             <TabsTrigger value="pending" disabled={isNew}>Pending</TabsTrigger>
             <TabsTrigger value="analytics" disabled={isNew}>Analytics</TabsTrigger>
