@@ -383,6 +383,7 @@ export async function generateEventReport(event: EventRow): Promise<void> {
     "Platform fees are estimated and may differ from final settlement invoices.",
     "For questions, contact the EnventSuite support team.",
   ];
+  y = ensureSpace(doc, y, 60, margin);
   for (const line of notes) {
     const wrapped = doc.splitTextToSize(line, pageWidth - margin * 2);
     doc.text(wrapped, margin, y);
