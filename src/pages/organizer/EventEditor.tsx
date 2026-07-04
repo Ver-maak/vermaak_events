@@ -268,6 +268,7 @@ const EventEditor = () => {
                   { key: "leaderboard", label: "Rotaract club leaderboard", desc: "Show a ranked leaderboard of clubs in Analytics, with CSV / PDF export. Only useful for Rotaract events." },
                   { key: "event_admins", label: "Event admins (up to 4)", desc: "Invite co-admins who can check in tickets and view orders." },
                   { key: "momo_payment", label: "Mobile Money payment", desc: "Accept MTN & Airtel MoMo checkout via the configured provider." },
+                  { key: "price_tiers", label: "Price tiers", desc: "Enable multiple ticket tiers with prices (e.g. Early bird, VIP). Turn off for a single free RSVP-style event." },
                 ].map((f) => {
                   const flags = form.feature_flags as Record<string, boolean>;
                   return (
