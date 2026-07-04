@@ -350,7 +350,7 @@ const EventEditor = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="tiers" className="pt-4"><TiersPanel eventId={id!} currency={form.currency} /></TabsContent>
+          {form.feature_flags.price_tiers && <TabsContent value="tiers" className="pt-4"><TiersPanel eventId={id!} currency={form.currency} /></TabsContent>}
           <TabsContent value="attendees" className="pt-4"><AttendeesPanel eventId={id!} /></TabsContent>
           <TabsContent value="pending" className="pt-4"><PendingOrdersPanel eventId={id!} /></TabsContent>
           <TabsContent value="analytics" className="pt-4"><AnalyticsPanel eventId={id!} currency={form.currency} eventTitle={form.title} showLeaderboard={form.feature_flags.leaderboard} /></TabsContent>
