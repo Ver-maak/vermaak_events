@@ -383,7 +383,8 @@ const EventDetail = () => {
             <Card>
               <CardHeader><CardTitle className="text-lg">Get tickets</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                {!tiers || tiers.length === 0 ? <p className="text-sm text-muted-foreground">No tickets available</p> :
+                {!priceTiersEnabled ? <p className="text-sm text-muted-foreground">Ticket sales are disabled for this event.</p> :
+                  !tiers || tiers.length === 0 ? <p className="text-sm text-muted-foreground">No tickets available</p> :
                   tiers.map((t) => {
                     const remaining = t.quantity ? t.quantity - (t.sold || 0) : null;
                     const soldOut = remaining !== null && remaining <= 0;
