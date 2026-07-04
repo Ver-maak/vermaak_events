@@ -218,9 +218,17 @@ export async function generateEventReport(event: EventRow): Promise<void> {
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 40;
 
+  // Load Vermaak logo (best-effort)
+  const logoDataUrl = await loadImageDataUrl(vermaakLogoUrl);
+
   // Header
   doc.setFillColor(20, 30, 55);
   doc.rect(0, 0, pageWidth, 90, "F");
+  if (logoDataUrl) {
+    try {
+      doc.addImage(logoDataUrl, "PNG", pageWidth - margin - 60, 15, 60, 60);
+    } catch { /* ignore */ }
+  }
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
@@ -228,7 +236,7 @@ export async function generateEventReport(event: EventRow): Promise<void> {
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
   doc.text(`Generated ${new Date().toLocaleString("en-UG")}`, margin, 60);
-  doc.text("Powered by EnventSuite", pageWidth - margin, 60, { align: "right" });
+  doc.text("Powered by Vermaak Events", margin, 76);
 
   // Event details
   doc.setTextColor(20, 20, 20);
