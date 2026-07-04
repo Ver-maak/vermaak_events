@@ -64,7 +64,7 @@ const EventEditor = () => {
 
   // New events default to general (non-Rotaract) features. Enable Rotaract-specific
   // features (attendee classification, club leaderboard) per event when needed.
-  const DEFAULT_FLAGS = { classification: false, leaderboard: false, event_admins: true, momo_payment: true };
+  const DEFAULT_FLAGS = { classification: false, leaderboard: false, event_admins: true, momo_payment: true, price_tiers: true };
   const [form, setForm] = useState({
     title: "", description: "", venue: "", city: "", category: "",
     cover_image_url: "", starts_at: "", ends_at: "", currency: "UGX", capacity: "",
@@ -206,7 +206,7 @@ const EventEditor = () => {
         <Tabs defaultValue={initialTab}>
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="tiers" disabled={isNew}>Tickets</TabsTrigger>
+            {form.feature_flags.price_tiers && <TabsTrigger value="tiers" disabled={isNew}>Tickets</TabsTrigger>}
             <TabsTrigger value="attendees" disabled={isNew}>Attendees</TabsTrigger>
             <TabsTrigger value="pending" disabled={isNew}>Pending</TabsTrigger>
             <TabsTrigger value="analytics" disabled={isNew}>Analytics</TabsTrigger>
@@ -268,6 +268,7 @@ const EventEditor = () => {
                   { key: "leaderboard", label: "Rotaract club leaderboard", desc: "Show a ranked leaderboard of clubs in Analytics, with CSV / PDF export. Only useful for Rotaract events." },
                   { key: "event_admins", label: "Event admins (up to 4)", desc: "Invite co-admins who can check in tickets and view orders." },
                   { key: "momo_payment", label: "Mobile Money payment", desc: "Accept MTN & Airtel MoMo checkout via the configured provider." },
+                  { key: "price_tiers", label: "Price tiers", desc: "Enable multiple ticket tiers with prices (e.g. Early bird, VIP). Turn off for a single free RSVP-style event." },
                 ].map((f) => {
                   const flags = form.feature_flags as Record<string, boolean>;
                   return (
@@ -349,7 +350,7 @@ const EventEditor = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="tiers" className="pt-4"><TiersPanel eventId={id!} currency={form.currency} /></TabsContent>
+          {form.feature_flags.price_tiers && <TabsContent value="tiers" className="pt-4"><TiersPanel eventId={id!} currency={form.currency} /></TabsContent>}
           <TabsContent value="attendees" className="pt-4"><AttendeesPanel eventId={id!} /></TabsContent>
           <TabsContent value="pending" className="pt-4"><PendingOrdersPanel eventId={id!} /></TabsContent>
           <TabsContent value="analytics" className="pt-4"><AnalyticsPanel eventId={id!} currency={form.currency} eventTitle={form.title} showLeaderboard={form.feature_flags.leaderboard} /></TabsContent>

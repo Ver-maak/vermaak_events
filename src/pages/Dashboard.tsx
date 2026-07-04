@@ -216,28 +216,22 @@ const Dashboard = () => {
           </div>
         )}
 
-        {isSuperAdmin && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              title="Platform fees collected"
-              value={formatMoney(platformFees?.total || 0, "UGX")}
-              subtitle={`${platformFees?.count ?? 0} wallet transactions`}
-              icon={<DollarSign className="h-5 w-5" />}
-            />
-            <StatCard
-              title="Fees from past events"
-              value={formatMoney(eventFees?.past_fee_ugx || 0, "UGX")}
-              subtitle={`${eventFees?.past_event_count ?? 0} events completed`}
-              icon={<Calendar className="h-5 w-5" />}
-            />
-            <StatCard
-              title="Fees from upcoming events"
-              value={formatMoney(eventFees?.upcoming_fee_ugx || 0, "UGX")}
-              subtitle={`${eventFees?.upcoming_event_count ?? 0} events selling`}
-              icon={<TrendingUp className="h-5 w-5" />}
-            />
-          </div>
-        )}
+        {isSuperAdmin && (() => {
+          const walletFees = platformFees?.total || 0;
+          const pastFees = eventFees?.past_fee_ugx || 0;
+          const upFees = eventFees?.upcoming_fee_ugx || 0;
+          const total = walletFees + pastFees + upFees;
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                title="Platform fees collected"
+                value={formatMoney(total, "UGX")}
+                subtitle={`Past events ${formatMoney(pastFees, "UGX")} · Upcoming ${formatMoney(upFees, "UGX")}`}
+                icon={<DollarSign className="h-5 w-5" />}
+              />
+            </div>
+          );
+        })()}
 
 
 

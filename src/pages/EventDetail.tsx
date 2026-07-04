@@ -91,9 +91,10 @@ const EventDetail = () => {
     },
   });
   // Per-event feature flags with safe defaults (existing events remain fully-featured).
-  const flags = { classification: true, leaderboard: true, event_admins: true, momo_payment: true, ...((event as any)?.feature_flags || {}) };
+  const flags = { classification: true, leaderboard: true, event_admins: true, momo_payment: true, price_tiers: true, ...((event as any)?.feature_flags || {}) };
   const isRotaract = !!flags.classification;
   const momoEnabled = !!flags.momo_payment;
+  const priceTiersEnabled = flags.price_tiers !== false;
 
   const setQty = (tierId: string, q: number) => setQuantities((p) => ({ ...p, [tierId]: Math.max(0, q) }));
 
@@ -382,7 +383,8 @@ const EventDetail = () => {
             <Card>
               <CardHeader><CardTitle className="text-lg">Get tickets</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                {!tiers || tiers.length === 0 ? <p className="text-sm text-muted-foreground">No tickets available</p> :
+                {!priceTiersEnabled ? <p className="text-sm text-muted-foreground">Ticket sales are disabled for this event.</p> :
+                  !tiers || tiers.length === 0 ? <p className="text-sm text-muted-foreground">No tickets available</p> :
                   tiers.map((t) => {
                     const remaining = t.quantity ? t.quantity - (t.sold || 0) : null;
                     const soldOut = remaining !== null && remaining <= 0;
