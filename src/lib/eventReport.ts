@@ -398,6 +398,82 @@ export async function generateEventReport(event: EventRow): Promise<void> {
     }
   }
 
+  // Attendee details summary
+  if (paidTickets.length > 0) {
+    y = ensureSpace(doc, y, 40, margin);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(20, 20, 20);
+    doc.text("Attendee details", margin, y);
+    y += 4;
+
+    const tierMap: Record<string, string> = {};
+    (tiers || []).forEach((t: any) => { tierMap[t.id] = t.name; });
+
+    const uniqueEmails = new Set(
+      paidTickets.map((t: any) => (t.holder_email || "").trim().toLowerCase()).filter(Boolean),
+    );
+    const namedCount = paidTickets.filter((t: any) => (t.holder_name || "").trim()).length;
+    const anonymousCount = paidTickets.length - namedCount;
+
+    autoTable(doc, {
+      startY: y + 4,
+      theme: "grid",
+      styles: { fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: [20, 30, 55], textColor: 255 },
+      head: [["Metric", "Value"]],
+      body: [
+        ["Total attendees (paid tickets)", String(paidTickets.length)],
+        ["Unique attendee emails", String(uniqueEmails.size)],
+        ["Named attendees", String(namedCount)],
+        ["Unnamed / guest tickets", String(anonymousCount)],
+        ["Checked in", `${checkedIn.length} (${paidTickets.length ? Math.round((checkedIn.length / paidTickets.length) * 100) : 0}%)`],
+        ["Not yet checked in", String(paidTickets.length - checkedIn.length)],
+      ],
+      margin: { left: margin, right: margin },
+    });
+    y = (doc as any).lastAutoTable.finalY + 16;
+
+    // Full attendee list
+    const rows = paidTickets
+      .slice()
+      .sort((a: any, b: any) => (a.holder_name || "").localeCompare(b.holder_name || ""))
+      .map((t: any, i: number) => [
+        String(i + 1),
+        t.holder_name || "—",
+        t.holder_email || "—",
+        tierMap[t.tier_id] || "—",
+        t.checked_in_at ? "Yes" : "No",
+        t.checked_in_at ? formatDateTime(t.checked_in_at) : "—",
+      ]);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(20, 20, 20);
+    y = ensureSpace(doc, y, 40, margin);
+    doc.text("Attendee list", margin, y);
+    y += 4;
+
+    autoTable(doc, {
+      startY: y + 4,
+      theme: "striped",
+      styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
+      headStyles: { fillColor: [20, 30, 55], textColor: 255 },
+      head: [["#", "Name", "Email", "Tier", "Checked in", "Check-in time"]],
+      body: rows,
+      columnStyles: {
+        0: { cellWidth: 24 },
+        1: { cellWidth: 110 },
+        2: { cellWidth: 150 },
+        3: { cellWidth: 80 },
+        4: { cellWidth: 55 },
+      },
+      margin: { left: margin, right: margin },
+    });
+    y = (doc as any).lastAutoTable.finalY + 20;
+  }
+
+
   // Notes / disclaimer
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
