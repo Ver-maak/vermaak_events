@@ -554,7 +554,7 @@ const PendingOrdersPanel = ({ eventId }: { eventId: string }) => {
   );
 };
 
-const AttendeesPanel = ({ eventId }: { eventId: string }) => {
+const AttendeesPanel = ({ eventId, showClassification = true }: { eventId: string; showClassification?: boolean }) => {
   const { data: tickets } = useQuery({
     queryKey: ["event-attendees", eventId],
     queryFn: async () => {
@@ -582,9 +582,11 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                   <th className="py-2">Holder</th>
                   <th>Email</th>
                   <th>Phone</th>
-                  <th>Type</th>
-                  <th>Rotary club</th>
-                  <th>Member ID</th>
+                  {showClassification && <>
+                    <th>Type</th>
+                    <th>Rotary club</th>
+                    <th>Member ID</th>
+                  </>}
                   <th>Tier</th>
                   <th>Code</th>
                   <th>Buyer</th>
