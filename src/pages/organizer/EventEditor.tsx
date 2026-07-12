@@ -372,7 +372,7 @@ const EventEditor = () => {
           </TabsContent>
 
           {form.feature_flags.price_tiers && <TabsContent value="tiers" className="pt-4"><TiersPanel eventId={id!} currency={form.currency} /></TabsContent>}
-          <TabsContent value="attendees" className="pt-4"><AttendeesPanel eventId={id!} /></TabsContent>
+          <TabsContent value="attendees" className="pt-4"><AttendeesPanel eventId={id!} showClassification={form.feature_flags.classification} /></TabsContent>
           <TabsContent value="pending" className="pt-4"><PendingOrdersPanel eventId={id!} /></TabsContent>
           <TabsContent value="analytics" className="pt-4"><AnalyticsPanel eventId={id!} currency={form.currency} eventTitle={form.title} showLeaderboard={form.feature_flags.leaderboard} /></TabsContent>
           {canManage && !isNew && form.feature_flags.event_admins && <TabsContent value="admins" className="pt-4"><AdminsPanel eventId={id!} /></TabsContent>}
@@ -554,7 +554,7 @@ const PendingOrdersPanel = ({ eventId }: { eventId: string }) => {
   );
 };
 
-const AttendeesPanel = ({ eventId }: { eventId: string }) => {
+const AttendeesPanel = ({ eventId, showClassification = true }: { eventId: string; showClassification?: boolean }) => {
   const { data: tickets } = useQuery({
     queryKey: ["event-attendees", eventId],
     queryFn: async () => {
@@ -582,9 +582,11 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                   <th className="py-2">Holder</th>
                   <th>Email</th>
                   <th>Phone</th>
-                  <th>Type</th>
-                  <th>Rotary club</th>
-                  <th>Member ID</th>
+                  {showClassification && <>
+                    <th>Type</th>
+                    <th>Rotary club</th>
+                    <th>Member ID</th>
+                  </>}
                   <th>Tier</th>
                   <th>Code</th>
                   <th>Buyer</th>
@@ -607,13 +609,15 @@ const AttendeesPanel = ({ eventId }: { eventId: string }) => {
                           <a href={`tel:${phoneDigits}`} className="text-primary hover:underline">{phone}</a>
                         ) : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="capitalize text-xs">
-                        {type ? (
-                          <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">{type}</span>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="text-xs">{m.rotary_club || "—"}</td>
-                      <td className="text-xs font-mono">{m.member_id || "—"}</td>
+                      {showClassification && <>
+                        <td className="capitalize text-xs">
+                          {type ? (
+                            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">{type}</span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="text-xs">{m.rotary_club || "—"}</td>
+                        <td className="text-xs font-mono">{m.member_id || "—"}</td>
+                      </>}
                       <td>{t.ticket_tiers?.name || "—"}</td>
                       <td className="font-mono text-xs">{t.code}</td>
                       <td className="text-xs text-muted-foreground">{t.orders?.buyer_name || t.orders?.buyer_email || "—"}</td>
