@@ -609,13 +609,15 @@ const AttendeesPanel = ({ eventId, showClassification = true }: { eventId: strin
                           <a href={`tel:${phoneDigits}`} className="text-primary hover:underline">{phone}</a>
                         ) : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="capitalize text-xs">
-                        {type ? (
-                          <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">{type}</span>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="text-xs">{m.rotary_club || "—"}</td>
-                      <td className="text-xs font-mono">{m.member_id || "—"}</td>
+                      {showClassification && <>
+                        <td className="capitalize text-xs">
+                          {type ? (
+                            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary">{type}</span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="text-xs">{m.rotary_club || "—"}</td>
+                        <td className="text-xs font-mono">{m.member_id || "—"}</td>
+                      </>}
                       <td>{t.ticket_tiers?.name || "—"}</td>
                       <td className="font-mono text-xs">{t.code}</td>
                       <td className="text-xs text-muted-foreground">{t.orders?.buyer_name || t.orders?.buyer_email || "—"}</td>
