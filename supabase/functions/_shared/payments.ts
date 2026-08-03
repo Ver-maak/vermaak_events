@@ -276,15 +276,148 @@ export const SwarmbyteProvider: PaymentProvider = {
   },
 };
 
+// ---------------- Generic REST adapter ----------------
+// Lets a super admin register a brand-new provider from the Payment Settings UI
+// without a code change. Endpoint paths + auth style are stored as (encrypted)
+// credential fields:
+//   auth_type    "oauth"  -> POST {token_path} client_credentials, use Bearer token
+//                "header" -> send api_key in {api_key_header} (default Authorization)
+//   token_path   default /v1/oauth/collections/token
+//   collect_path default /v1/collect
+//   status_path  default /v1/collect/transactions/{id}
+function joinUrl(base: string, path: string) {
+  return `${base.replace(/\/+$/, "")}/${String(path || "").replace(/^\/+/, "")}`;
+}
+
+async function genericToken(cfg: ProviderConfig): Promise<string | null> {
+  const c = cfg.credentials || {};
+  if ((c.auth_type || "oauth") !== "oauth") return null;
+  const base = (cfg.base_url || "").replace(/\/+$/, "");
+  if (!base) throw new Error("Base API URL not configured");
+  if (!c.api_key || !c.api_secret) throw new Error("api_key / api_secret not configured");
+
+  const cacheKey = `${base}|${c.api_key}|generic`;
+  const cached = tokenCache.get(cacheKey);
+  if (cached && cached.exp - 30_000 > Date.now()) return cached.token;
+
+  const res = await fetchWithRetry(joinUrl(base, c.token_path || "/v1/oauth/collections/token"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      grant_type: "client_credentials",
+      client_id: c.api_key,
+      client_secret: c.api_secret,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  const token = data?.access_token || data?.token || data?.data?.access_token;
+  if (!res.ok || !token) throw new Error(data?.message || `Token request failed (${res.status})`);
+  tokenCache.set(cacheKey, { token, exp: Date.now() + Number(data.expires_in || 600) * 1000 });
+  return token as string;
+}
+
+async function genericAuthHeaders(cfg: ProviderConfig): Promise<Record<string, string>> {
+  const c = cfg.credentials || {};
+  const token = await genericToken(cfg);
+  if (token) return { Authorization: `Bearer ${token}` };
+  const header = c.api_key_header || "Authorization";
+  if (!c.api_key) throw new Error("api_key not configured");
+  return { [header]: header.toLowerCase() === "authorization" ? `Bearer ${c.api_key}` : c.api_key };
+}
+
+export function makeGenericProvider(code: string): PaymentProvider {
+  return {
+    code,
+    async testConnection(cfg) {
+      try {
+        if (!cfg.base_url) return { ok: false, message: "Base API URL not configured" };
+        await genericAuthHeaders(cfg);
+        return { ok: true, message: "Credentials accepted" };
+      } catch (e) {
+        return { ok: false, message: (e as Error).message };
+      }
+    },
+
+    async initiate(cfg, input) {
+      const c = cfg.credentials || {};
+      const base = (cfg.base_url || "").replace(/\/+$/, "");
+      if (!base) throw new Error("Base API URL not configured");
+      const headers = {
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": (input.idempotencyKey || `${input.orderId}:${input.intentId || ""}`).slice(0, 200),
+        ...(await genericAuthHeaders(cfg)),
+      };
+      const body: Record<string, unknown> = {
+        amount: Math.round(Number(input.amount)),
+        currency: input.currency,
+        reference: input.orderId,
+        webhookUrl: input.callbackUrl,
+        redirectUrl: input.redirectSuccessUrl,
+        cancelUrl: input.redirectCancelUrl,
+        customer: { name: input.buyer.name, email: input.buyer.email, phone: input.buyer.phone },
+      };
+      if (c.wallet_address) body.walletAddress = c.wallet_address;
+      if (input.buyer.phone) body.msisdn = input.buyer.phone.replace(/\D/g, "");
+
+      const res = await fetchWithRetry(joinUrl(base, c.collect_path || "/v1/collect"), {
+        method: "POST", headers, body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && res.status !== 202) {
+        throw new Error(data?.message || `Payment request failed (${res.status})`);
+      }
+      const p = data?.data ?? data;
+      const providerRef = p?.transactionId || p?.id || p?.reference;
+      if (!providerRef) throw new Error("Provider did not return a transaction reference");
+      const redirectUrl = p?.redirectUrl || p?.paymentUrl || p?.checkout_url;
+      return {
+        providerRef: String(providerRef),
+        redirectUrl: redirectUrl ? String(redirectUrl) : undefined,
+        awaitConfirmation: !redirectUrl,
+        message: redirectUrl ? undefined : "Approve the prompt on your phone to complete payment.",
+        raw: data,
+      };
+    },
+
+    async verify(cfg, providerRef) {
+      const c = cfg.credentials || {};
+      const base = (cfg.base_url || "").replace(/\/+$/, "");
+      const path = (c.status_path || "/v1/collect/transactions/{id}").includes("{id}")
+        ? (c.status_path || "/v1/collect/transactions/{id}").replace("{id}", encodeURIComponent(providerRef))
+        : `${c.status_path}/${encodeURIComponent(providerRef)}`;
+      const res = await fetchWithRetry(joinUrl(base, path), { headers: await genericAuthHeaders(cfg) });
+      const data = await res.json().catch(() => ({}));
+      const p = data?.data ?? data;
+      return { status: normalizeSwarmbyteStatus(p?.status), raw: data };
+    },
+
+    async verifySignature(cfg, rawBody, headers) {
+      const secret = cfg.credentials?.webhook_secret;
+      if (!secret) return true; // unsigned provider
+      const sent = headers.get("x-signature") || "";
+      const expected = await hmacSha256Hex(secret, rawBody);
+      return timingSafeEqual(sent.toLowerCase(), expected);
+    },
+
+    parseWebhook(body: any) {
+      const providerRef = String(
+        body?.transactionId || body?.data?.transactionId || body?.reference || body?.data?.id || "",
+      );
+      const status = normalizeSwarmbyteStatus(body?.status ?? body?.data?.status);
+      const event = String(body?.event || "transaction.updated");
+      return { providerRef, status, eventKey: `${event}:${providerRef}` };
+    },
+  };
+}
+
 const REGISTRY: Record<string, PaymentProvider> = {
   swarmbyte: SwarmbyteProvider,
 };
 
 export function getProvider(code: string): PaymentProvider {
-  const p = REGISTRY[code];
-  if (!p) throw new Error(`Unknown payment provider: ${code}`);
-  return p;
+  return REGISTRY[code] || makeGenericProvider(code);
 }
+
 
 export async function loadProviderConfig(code: string): Promise<ProviderConfig> {
   const sb = adminClient();
