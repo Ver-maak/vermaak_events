@@ -216,17 +216,39 @@ export default function PaymentSettings() {
         <Card>
           <CardHeader>
             <CardTitle>Provider</CardTitle>
-            <CardDescription>Select which provider you are configuring.</CardDescription>
+            <CardDescription>Select which provider you are configuring, or add a new API provider.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-wrap items-center gap-2">
             <Select value={code} onValueChange={setCode}>
               <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {PROVIDERS.map((p) => <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>)}
+                {providers.map((p) => <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-1"><Plus className="h-4 w-4" /> Add provider</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add API provider</DialogTitle>
+                  <DialogDescription>
+                    Register a new payment API. After adding it, fill in the base URL, endpoint paths and credentials, then save and test.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Field label="Display name" value={newName} onChange={setNewName} placeholder="Flutterwave" />
+                  <Field label="Provider code (lowercase, no spaces)" value={newCode} onChange={setNewCode} placeholder="flutterwave" />
+                </div>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setAddOpen(false)}>Cancel</Button>
+                  <Button onClick={addProvider}>Add</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
+
 
         {loaded && (
           <Card>
