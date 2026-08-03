@@ -10,11 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { CreditCard, Loader2, ShieldCheck } from "lucide-react";
+import { CreditCard, Loader2, Plus, ShieldCheck } from "lucide-react";
 import { getFunctionErrorMessage } from "@/lib/paymentErrors";
 
-const PROVIDERS = [
+const BUILT_IN_PROVIDERS = [
   { code: "swarmbyte", name: "Swarmbyte Payments" },
 ];
 
@@ -31,6 +34,12 @@ interface FormState {
   api_key: string;
   api_secret: string;
   wallet_address: string;
+  webhook_secret: string;
+  auth_type: string;
+  api_key_header: string;
+  token_path: string;
+  collect_path: string;
+  status_path: string;
   preview: Record<string, string>;
 }
 
@@ -45,6 +54,12 @@ const empty: FormState = {
   api_key: "",
   api_secret: "",
   wallet_address: "",
+  webhook_secret: "",
+  auth_type: "oauth",
+  api_key_header: "Authorization",
+  token_path: "/v1/oauth/collections/token",
+  collect_path: "/v1/collect",
+  status_path: "/v1/collect/transactions/{id}",
   preview: {},
 };
 
@@ -56,13 +71,29 @@ function mask(v: string) {
 
 export default function PaymentSettings() {
   const { roles, loading } = useAuth();
+  const [providers, setProviders] = useState(BUILT_IN_PROVIDERS);
   const [code, setCode] = useState("swarmbyte");
   const [form, setForm] = useState<FormState>(empty);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newCode, setNewCode] = useState("");
+  const [newName, setNewName] = useState("");
 
+  const isCustom = !BUILT_IN_PROVIDERS.some((p) => p.code === code);
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/payments-webhook?provider=${code}`;
+
+  const loadProviders = async () => {
+    const { data } = await supabase.from("payment_providers").select("code,name").order("name");
+    const merged = [...BUILT_IN_PROVIDERS];
+    (data || []).forEach((p: any) => {
+      if (!merged.some((m) => m.code === p.code)) merged.push({ code: p.code, name: p.name });
+    });
+    setProviders(merged);
+  };
+
+  useEffect(() => { loadProviders(); }, []);
 
   useEffect(() => {
     (async () => {
@@ -75,6 +106,7 @@ export default function PaymentSettings() {
       if (data) {
         const p = (data.credentials_preview as Record<string, string>) || {};
         setForm({
+          ...empty,
           name: data.name,
           enabled: data.enabled,
           mode: (data.mode as Mode) || "sandbox",
@@ -82,18 +114,43 @@ export default function PaymentSettings() {
           callback_url: data.callback_url || "",
           redirect_success_url: data.redirect_success_url || "",
           redirect_cancel_url: data.redirect_cancel_url || "",
-          api_key: "", api_secret: "", wallet_address: "",
+          auth_type: p.auth_type || "oauth",
+          api_key_header: p.api_key_header || "Authorization",
+          token_path: p.token_path || empty.token_path,
+          collect_path: p.collect_path || empty.collect_path,
+          status_path: p.status_path || empty.status_path,
+          api_key: "", api_secret: "", wallet_address: "", webhook_secret: "",
           preview: p,
         });
       } else {
-        setForm({ ...empty });
+        const known = providers.find((p) => p.code === code);
+        setForm({ ...empty, name: known?.name || code, base_url: "" });
       }
       setLoaded(true);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
   if (loading) return null;
   if (!roles.includes("super_admin")) return <Navigate to="/dashboard" replace />;
+
+  const addProvider = () => {
+    const slug = newCode.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+    if (!slug || !newName.trim()) {
+      toast({ title: "Missing details", description: "Provide a code and a display name.", variant: "destructive" });
+      return;
+    }
+    if (providers.some((p) => p.code === slug)) {
+      toast({ title: "Already exists", description: "That provider code is already in the list.", variant: "destructive" });
+      return;
+    }
+    setProviders((ps) => [...ps, { code: slug, name: newName.trim() }]);
+    setCode(slug);
+    setAddOpen(false);
+    setNewCode(""); setNewName("");
+    toast({ title: "Provider added", description: "Fill in the API details below and save." });
+  };
+
 
   const save = async () => {
     setSaving(true);
