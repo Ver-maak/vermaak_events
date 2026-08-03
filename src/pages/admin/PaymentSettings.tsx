@@ -294,19 +294,46 @@ export default function PaymentSettings() {
                 <Field label="Base API URL" value={form.base_url} onChange={(v) => setForm({ ...form, base_url: v })} placeholder="https://api.swarmbyte.example" className="md:col-span-2" />
               </div>
 
+              {isCustom && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+                  <div className="space-y-1.5">
+                    <Label>Authentication</Label>
+                    <Select value={form.auth_type} onValueChange={(v) => setForm({ ...form, auth_type: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="oauth">OAuth client credentials (token endpoint)</SelectItem>
+                        <SelectItem value="header">API key in header</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.auth_type === "oauth"
+                    ? <Field label="Token endpoint path" value={form.token_path} onChange={(v) => setForm({ ...form, token_path: v })} placeholder="/v1/oauth/token" />
+                    : <Field label="API key header name" value={form.api_key_header} onChange={(v) => setForm({ ...form, api_key_header: v })} placeholder="Authorization" />}
+                  <Field label="Payment (collect) path" value={form.collect_path} onChange={(v) => setForm({ ...form, collect_path: v })} placeholder="/v1/collect" />
+                  <Field label="Status path ({id} placeholder)" value={form.status_path} onChange={(v) => setForm({ ...form, status_path: v })} placeholder="/v1/collect/transactions/{id}" />
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <SecretField label="API key (client_id)" preview={form.preview.api_key} value={form.api_key} onChange={(v) => setForm({ ...form, api_key: v })} />
                 <SecretField label="API secret (client_secret)" preview={form.preview.api_secret} value={form.api_secret} onChange={(v) => setForm({ ...form, api_secret: v })} />
-                <SecretField label="Wallet address" preview={form.preview.wallet_address} value={form.wallet_address} onChange={(v) => setForm({ ...form, wallet_address: v })} />
+                <SecretField label="Wallet / merchant address" preview={form.preview.wallet_address} value={form.wallet_address} onChange={(v) => setForm({ ...form, wallet_address: v })} />
+                {isCustom && (
+                  <SecretField label="Webhook signing secret (optional)" preview={form.preview.webhook_secret} value={form.webhook_secret} onChange={(v) => setForm({ ...form, webhook_secret: v })} />
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Note: Swarmbyte webhooks are unsigned (per their docs). Security relies on HTTPS,
-                the unguessable Supabase function URL, and idempotent processing by transactionId.
-              </p>
+              {!isCustom && (
+                <p className="text-xs text-muted-foreground">
+                  Note: Swarmbyte webhooks are unsigned (per their docs). Security relies on HTTPS,
+                  the unguessable Supabase function URL, and idempotent processing by transactionId.
+                </p>
+              )}
 
               <div className="space-y-1.5 pt-2">
-                <Label>Webhook URL (configure this in Swarmbyte dashboard)</Label>
+                <Label>Webhook URL (configure this in the provider dashboard)</Label>
                 <Input readOnly value={webhookUrl} onFocus={(e) => e.currentTarget.select()} />
+              </div>
+
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
