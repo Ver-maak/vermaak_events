@@ -334,7 +334,7 @@ export default function PaymentSettings() {
                 <Input readOnly value={webhookUrl} onFocus={(e) => e.currentTarget.select()} />
               </div>
 
-              </div>
+
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Callback URL override (optional)" value={form.callback_url} onChange={(v) => setForm({ ...form, callback_url: v })} placeholder="Defaults to the webhook URL above" />
