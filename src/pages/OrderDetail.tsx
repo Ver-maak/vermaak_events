@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
 import TicketPreviewCard from "@/components/TicketPreviewCard";
-import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
+import MoMoPaymentDialog, { type ConfirmPayload } from "@/components/MoMoPaymentDialog";
 import { getFunctionErrorMessage, extractProviderReason } from "@/lib/paymentErrors";
 
 const OrderDetail = () => {
@@ -69,12 +69,13 @@ const OrderDetail = () => {
     qc.invalidateQueries({ queryKey: ["order-detail", id] });
   };
 
-  const handleMomoConfirm = async ({ phone }: { method: string; phone: string; reference: string }) => {
+  const handleMomoConfirm = async ({ phone, channel, card }: ConfirmPayload) => {
     if (!order?.id) throw new Error("No order");
     setPendingIntentId(null);
     const { data: init, error: initErr } = await supabase.functions.invoke("payments-initiate", {
-      body: { order_id: order.id, provider_code: "swarmbyte", phone },
+      body: { order_id: order.id, provider_code: "swarmbyte", phone, channel, card },
     });
+
     if (initErr || init?.error) throw new Error(init?.error || await getFunctionErrorMessage(initErr, "Failed to initiate payment"));
 
     if (init.already_paid) {
