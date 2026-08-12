@@ -44,7 +44,12 @@ export interface InitiateInput {
   redirectCancelUrl?: string;
   /** Idempotency key used for retry-safe collect calls. */
   idempotencyKey?: string;
+  /** "momo" (STK push) or "card" (Visa / Mastercard hosted checkout). */
+  channel?: "momo" | "card";
+  /** Card metadata only — never the full PAN. */
+  card?: { brand?: string; last4?: string };
 }
+
 export interface InitiateResult {
   providerRef: string;
   /** Redirect-style flow (not used by STK-push providers like Swarmbyte). */
@@ -200,9 +205,13 @@ export const SwarmbyteProvider: PaymentProvider = {
   },
 
   async initiate(cfg, input) {
+    if (input.channel === "card") {
+      throw new Error("Swarmbyte does not support card payments. Enable a card provider in Admin → Payment Settings.");
+    }
     if (input.currency !== "UGX") {
       throw new Error("Swarmbyte collections only support UGX");
     }
+
     const amount = Math.round(Number(input.amount));
     if (!Number.isFinite(amount) || amount < 500) {
       throw new Error("Amount must be an integer ≥ 500 UGX");
@@ -347,6 +356,7 @@ export function makeGenericProvider(code: string): PaymentProvider {
         "X-Idempotency-Key": (input.idempotencyKey || `${input.orderId}:${input.intentId || ""}`).slice(0, 200),
         ...(await genericAuthHeaders(cfg)),
       };
+      const isCard = input.channel === "card";
       const body: Record<string, unknown> = {
         amount: Math.round(Number(input.amount)),
         currency: input.currency,
@@ -357,15 +367,27 @@ export function makeGenericProvider(code: string): PaymentProvider {
         customer: { name: input.buyer.name, email: input.buyer.email, phone: input.buyer.phone },
       };
       if (c.wallet_address) body.walletAddress = c.wallet_address;
-      if (input.buyer.phone) body.msisdn = input.buyer.phone.replace(/\D/g, "");
+      if (!isCard && input.buyer.phone) body.msisdn = input.buyer.phone.replace(/\D/g, "");
+      if (isCard) {
+        // Only brand + last4 are forwarded — the PAN is captured on the
+        // provider's hosted checkout page, so we stay out of PCI scope.
+        body.channel = "card";
+        body.paymentMethod = "card";
+        if (input.card?.brand) body.cardBrand = input.card.brand;
+        if (input.card?.last4) body.cardLast4 = input.card.last4;
+      }
 
-      const res = await fetchWithRetry(joinUrl(base, c.collect_path || "/v1/collect"), {
+      const path = isCard
+        ? (c.card_collect_path || c.collect_path || "/v1/collect")
+        : (c.collect_path || "/v1/collect");
+      const res = await fetchWithRetry(joinUrl(base, path), {
         method: "POST", headers, body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok && res.status !== 202) {
         throw new Error(data?.message || `Payment request failed (${res.status})`);
       }
+
       const p = data?.data ?? data;
       const providerRef = p?.transactionId || p?.id || p?.reference;
       if (!providerRef) throw new Error("Provider did not return a transaction reference");

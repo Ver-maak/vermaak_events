@@ -24,8 +24,20 @@ Deno.serve(async (req) => {
     const userId = userData.user.id;
 
     const body = await req.json().catch(() => ({}));
-    const { order_id, provider_code, phone } = body as { order_id?: string; provider_code?: string; phone?: string };
+    const { order_id, phone, channel, card } = body as {
+      order_id?: string; provider_code?: string; phone?: string;
+      channel?: "momo" | "card"; card?: { brand?: string; last4?: string };
+    };
+    let provider_code = (body as any).provider_code as string | undefined;
     if (!order_id || !provider_code) return json({ ok: false, error: "Missing order or payment provider." });
+
+    const isCard = channel === "card";
+    if (isCard) {
+      const brand = String(card?.brand || "").toLowerCase();
+      if (brand !== "visa" && brand !== "mastercard") {
+        return json({ ok: false, error: "Only Visa and Mastercard cards are accepted." });
+      }
+    }
 
     const sb = adminClient();
     const { data: order, error: oe } = await sb.from("orders").select("*").eq("id", order_id).single();
@@ -33,6 +45,22 @@ Deno.serve(async (req) => {
     if (order.buyer_id !== userId) return json({ ok: false, error: "You can only pay for your own order." });
     if (order.status === "paid") return json({ ok: true, already_paid: true, await_confirmation: false, message: "Order already paid." });
     if (order.status !== "pending") return json({ ok: false, error: `Order is ${order.status}. Please create a new order.` });
+
+    // Card payments run through whichever enabled provider is flagged as
+    // card-capable in Admin → Payment Settings (Swarmbyte is MoMo-only).
+    if (isCard) {
+      const { data: rows } = await sb
+        .from("payment_providers")
+        .select("code,enabled,credentials_preview")
+        .eq("enabled", true);
+      const cardProvider = (rows || []).find(
+        (r: any) => String(r.credentials_preview?.supports_cards) === "true",
+      );
+      if (!cardProvider) {
+        return json({ ok: false, error: "Card payments are not set up yet. Enable a card-capable provider in Admin → Payment Settings." });
+      }
+      provider_code = cardProvider.code;
+    }
 
     // Load provider config. We DO NOT silently fall back to a stub — that
     // hides misconfiguration and causes orders to be marked "paid" without
@@ -50,12 +78,13 @@ Deno.serve(async (req) => {
     const missing: string[] = [];
     if (!cfg.credentials?.api_key) missing.push("api_key");
     if (!cfg.credentials?.api_secret) missing.push("api_secret");
-    if (provider_code === "swarmbyte" && !(cfg.credentials?.wallet_address || cfg.credentials?.merchant_id)) {
+    if (!isCard && provider_code === "swarmbyte" && !(cfg.credentials?.wallet_address || cfg.credentials?.merchant_id)) {
       missing.push("wallet_address");
     }
     if (missing.length) {
-      return json({ ok: false, error: `Swarmbyte credentials missing: ${missing.join(", ")}. Add them in Admin → Payment Settings.` });
+      return json({ ok: false, error: `${provider_code} credentials missing: ${missing.join(", ")}. Add them in Admin → Payment Settings.` });
     }
+
 
 
     const provider = getProvider(provider_code);
@@ -95,6 +124,9 @@ Deno.serve(async (req) => {
         redirectSuccessUrl: cfg.redirect_success_url || undefined,
         redirectCancelUrl: cfg.redirect_cancel_url || undefined,
         idempotencyKey: intentId,
+        channel: isCard ? "card" : "momo",
+        card: isCard ? { brand: card?.brand, last4: card?.last4 } : undefined,
+
       });
     } catch (e) {
       await sb.from("payment_intents").update({

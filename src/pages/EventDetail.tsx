@@ -10,7 +10,7 @@ import { Calendar, MapPin, Ticket, Minus, Plus, ArrowLeft, Share2 } from "lucide
 import { formatMoney, formatDateTime } from "@/lib/format";
 import { useAuth } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
-import MoMoPaymentDialog from "@/components/MoMoPaymentDialog";
+import MoMoPaymentDialog, { type ConfirmPayload } from "@/components/MoMoPaymentDialog";
 import AttendeeInfoDialog, { type AttendeeHolder } from "@/components/AttendeeInfoDialog";
 import { getFunctionErrorMessage, extractProviderReason } from "@/lib/paymentErrors";
 import { EmailOtpGate } from "@/components/EmailOtpGate";
@@ -211,13 +211,14 @@ const EventDetail = () => {
   }, [session, resumeStep, tiers]);
 
 
-  const handleMomoConfirm = async ({ phone }: { method: string; phone: string; reference: string }) => {
+  const handleMomoConfirm = async ({ phone, channel, card }: ConfirmPayload) => {
     if (!pendingOrderId) throw new Error("No pending order");
     setPendingIntentId(null);
-    // 1. Initiate via provider-agnostic edge function (Swarmbyte STK push).
+    // 1. Initiate via provider-agnostic edge function (MoMo STK push or card).
     const { data: init, error: initErr } = await supabase.functions.invoke("payments-initiate", {
-      body: { order_id: pendingOrderId, provider_code: "swarmbyte", phone },
+      body: { order_id: pendingOrderId, provider_code: "swarmbyte", phone, channel, card },
     });
+
     if (initErr || init?.error) throw new Error(init?.error || await getFunctionErrorMessage(initErr, "Failed to initiate payment"));
 
     if (init.already_paid) {

@@ -40,7 +40,10 @@ interface FormState {
   token_path: string;
   collect_path: string;
   status_path: string;
+  supports_cards: boolean;
+  card_collect_path: string;
   preview: Record<string, string>;
+
 }
 
 const empty: FormState = {
@@ -60,7 +63,10 @@ const empty: FormState = {
   token_path: "/v1/oauth/collections/token",
   collect_path: "/v1/collect",
   status_path: "/v1/collect/transactions/{id}",
+  supports_cards: false,
+  card_collect_path: "",
   preview: {},
+
 };
 
 function mask(v: string) {
@@ -119,6 +125,9 @@ export default function PaymentSettings() {
           token_path: p.token_path || empty.token_path,
           collect_path: p.collect_path || empty.collect_path,
           status_path: p.status_path || empty.status_path,
+          supports_cards: String(p.supports_cards) === "true",
+          card_collect_path: p.card_collect_path || "",
+
           api_key: "", api_secret: "", wallet_address: "", webhook_secret: "",
           preview: p,
         });
@@ -173,6 +182,13 @@ export default function PaymentSettings() {
         preview.collect_path = form.collect_path;
         preview.status_path = form.status_path;
       }
+      newCreds.supports_cards = form.supports_cards ? "true" : "false";
+      preview.supports_cards = form.supports_cards ? "true" : "false";
+      if (form.card_collect_path) {
+        newCreds.card_collect_path = form.card_collect_path;
+        preview.card_collect_path = form.card_collect_path;
+      }
+
 
 
       const { data, error } = await supabase.functions.invoke("payments-save-credentials", {
@@ -313,6 +329,28 @@ export default function PaymentSettings() {
                   <Field label="Status path ({id} placeholder)" value={form.status_path} onChange={(v) => setForm({ ...form, status_path: v })} placeholder="/v1/collect/transactions/{id}" />
                 </div>
               )}
+
+              <div className="rounded-lg border border-border p-4 space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label>Card payments (Visa / Mastercard)</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Route card checkouts to this provider. Buyers' card brand is detected in the browser; the full card number is captured on the provider's hosted page.
+                    </p>
+                  </div>
+                  <Switch checked={form.supports_cards} onCheckedChange={(v) => setForm({ ...form, supports_cards: v })} />
+                </div>
+                {form.supports_cards && (
+                  <Field
+                    label="Card checkout path (optional)"
+                    value={form.card_collect_path}
+                    onChange={(v) => setForm({ ...form, card_collect_path: v })}
+                    placeholder="Defaults to the collect path"
+                  />
+                )}
+              </div>
+
+
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <SecretField label="API key (client_id)" preview={form.preview.api_key} value={form.api_key} onChange={(v) => setForm({ ...form, api_key: v })} />
