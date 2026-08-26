@@ -59,7 +59,7 @@ const Index = () => {
               Built for organizers in East Africa
             </div>
             <h1 className="text-5xl md:text-7xl font-bold text-white leading-[1.05] mb-6 text-balance">
-              Run unforgettable<br /> <span className="bg-gradient-to-r from-primary-glow to-accent bg-clip-text text-transparent">events.</span>
+              Run unforgettable events<br /> <span className="bg-gradient-to-r from-primary-glow to-accent bg-clip-text text-transparent">events.</span>
             </h1>
             <p className="text-lg md:text-xl text-white/80 mb-10 max-w-2xl">
               Create events, sell tickets, check guests in with QR — and grow with real‑time analytics.
