@@ -33,9 +33,28 @@ export function timingSafeEqual(a: string, b: string) {
   return r === 0;
 }
 
-// Finalize a payment intent: update order via RPC and enqueue outbound webhooks
+// Finalize a payment intent: update order via RPC and enqueue outbound webhooks.
+// Payment-link payments live outside the event/order model, so they are handled first.
 export async function finalizePayment(providerRef: string, status: "success" | "failed" | "cancelled", raw: any) {
   const sb = adminClient();
+
+  const { data: linkPayment } = await sb
+    .from("payment_link_payments")
+    .select("id,status")
+    .eq("provider_ref", providerRef)
+    .maybeSingle();
+  if (linkPayment) {
+    const next = status === "success" ? "paid" : status;
+    if (linkPayment.status === "pending") {
+      await sb.from("payment_link_payments").update({
+        status: next,
+        raw: raw ?? {},
+        paid_at: status === "success" ? new Date().toISOString() : null,
+      }).eq("id", linkPayment.id);
+    }
+    return { ok: true, payment_link_payment_id: linkPayment.id, status: next };
+  }
+
   const { data, error } = await sb.rpc("mark_order_paid_by_reference", {
     _provider_ref: providerRef, _status: status, _raw: raw,
   });
