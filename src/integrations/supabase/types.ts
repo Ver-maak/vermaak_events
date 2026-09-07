@@ -630,6 +630,131 @@ export type Database = {
           },
         ]
       }
+      payment_link_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          link_id: string
+          note: string | null
+          paid_at: string | null
+          payer_email: string
+          payer_name: string
+          payer_phone: string | null
+          provider: string | null
+          provider_ref: string | null
+          quantity: number
+          raw: Json
+          reference: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          link_id: string
+          note?: string | null
+          paid_at?: string | null
+          payer_email: string
+          payer_name: string
+          payer_phone?: string | null
+          provider?: string | null
+          provider_ref?: string | null
+          quantity?: number
+          raw?: Json
+          reference: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          link_id?: string
+          note?: string | null
+          paid_at?: string | null
+          payer_email?: string
+          payer_name?: string
+          payer_phone?: string | null
+          provider?: string | null
+          provider_ref?: string | null
+          quantity?: number
+          raw?: Json
+          reference?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_link_payments_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "payment_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_links: {
+        Row: {
+          amount_mode: string
+          created_at: string
+          created_by: string
+          currency: string
+          description: string | null
+          id: string
+          is_active: boolean
+          max_amount: number | null
+          min_amount: number | null
+          note_label: string | null
+          note_required: boolean
+          organization_id: string | null
+          slug: string
+          title: string
+          unit_amount: number
+          updated_at: string
+        }
+        Insert: {
+          amount_mode?: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_amount?: number | null
+          min_amount?: number | null
+          note_label?: string | null
+          note_required?: boolean
+          organization_id?: string | null
+          slug: string
+          title: string
+          unit_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_mode?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_amount?: number | null
+          min_amount?: number | null
+          note_label?: string | null
+          note_required?: boolean
+          organization_id?: string | null
+          slug?: string
+          title?: string
+          unit_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_logs: {
         Row: {
           created_at: string
