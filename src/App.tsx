@@ -32,6 +32,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import ShortLinkRedirect from "./pages/ShortLinkRedirect";
+import PayLink from "./pages/PayLink";
+import PaymentLinks from "./pages/PaymentLinks";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +69,7 @@ const App = () => (
             <Route path="/events/:slug" element={<EventDetail />} />
             <Route path="/legal/:doc" element={<Legal />} />
             <Route path="/s/:slug" element={<ShortLinkRedirect />} />
+            <Route path="/pay/:slug" element={<PayLink />} />
 
 
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -78,6 +81,7 @@ const App = () => (
             <Route path="/dashboard/check-in" element={<ProtectedRoute><CheckIn /></ProtectedRoute>} />
             <Route path="/dashboard/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
             <Route path="/dashboard/developer" element={<ProtectedRoute><Developer /></ProtectedRoute>} />
+            <Route path="/dashboard/payment-links" element={<ProtectedRoute><PaymentLinks /></ProtectedRoute>} />
 
             <Route path="/dashboard/wallets" element={<ProtectedRoute><Wallets /></ProtectedRoute>} />
             <Route path="/dashboard/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
