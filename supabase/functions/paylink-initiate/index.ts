@@ -94,6 +94,8 @@ Deno.serve(async (req) => {
       note: note || null,
       quantity: qty,
       amount: chargeAmount,
+      base_amount: baseAmount,
+      commission_amount: Math.max(0, commission),
       currency: link.currency,
       status: "pending",
       provider: providerCode,
