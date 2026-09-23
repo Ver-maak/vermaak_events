@@ -31,7 +31,7 @@ const PaymentLinks = () => {
   const [maxAmount, setMaxAmount] = useState("");
   const [noteLabel, setNoteLabel] = useState("");
   const [noteRequired, setNoteRequired] = useState(false);
-  const [commissionPercent, setCommissionPercent] = useState("");
+  const [commissionPercent, setCommissionPercent] = useState("3.5");
   const [commissionFlat, setCommissionFlat] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -91,7 +91,7 @@ const PaymentLinks = () => {
       setOpen(false);
       setTitle(""); setSlug(""); setDescription(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
       setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed");
-      setCommissionPercent(""); setCommissionFlat("");
+      setCommissionPercent("3.5"); setCommissionFlat("");
       qc.invalidateQueries({ queryKey: ["payment-links"] });
     },
     onError: (e: Error) => toast({ title: "Could not create link", description: e.message, variant: "destructive" }),
