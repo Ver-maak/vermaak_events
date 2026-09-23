@@ -172,7 +172,7 @@ const PaymentLinks = () => {
                 <thead>
                   <tr className="text-left text-muted-foreground border-b border-border">
                     <th className="py-2 pr-3">Reference</th><th className="py-2 pr-3">Payer</th>
-                    <th className="py-2 pr-3">Amount</th><th className="py-2 pr-3">Status</th><th className="py-2">Date</th>
+                    <th className="py-2 pr-3">Amount</th><th className="py-2 pr-3">Fee</th><th className="py-2 pr-3">Status</th><th className="py-2">Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -181,12 +181,13 @@ const PaymentLinks = () => {
                       <td className="py-2 pr-3 font-mono text-xs">{p.reference}</td>
                       <td className="py-2 pr-3">{p.payer_name}<br /><span className="text-xs text-muted-foreground">{p.payer_email}</span></td>
                       <td className="py-2 pr-3">{p.currency} {Number(p.amount).toLocaleString()}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{Number(p.commission_amount || 0).toLocaleString()}</td>
                       <td className="py-2 pr-3"><Badge variant={p.status === "paid" ? "default" : "secondary"}>{p.status}</Badge></td>
                       <td className="py-2 text-xs text-muted-foreground">{format(new Date(p.created_at), "dd MMM yyyy HH:mm")}</td>
                     </tr>
                   ))}
                   {(payments.data || []).length === 0 && (
-                    <tr><td colSpan={5} className="py-3 text-muted-foreground">No payments yet.</td></tr>
+                    <tr><td colSpan={6} className="py-3 text-muted-foreground">No payments yet.</td></tr>
                   )}
                 </tbody>
               </table>
