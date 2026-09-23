@@ -31,7 +31,7 @@ const PaymentLinks = () => {
   const [maxAmount, setMaxAmount] = useState("");
   const [noteLabel, setNoteLabel] = useState("");
   const [noteRequired, setNoteRequired] = useState(false);
-  const [commissionPercent, setCommissionPercent] = useState("");
+  const [commissionPercent, setCommissionPercent] = useState("3.5");
   const [commissionFlat, setCommissionFlat] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
 
