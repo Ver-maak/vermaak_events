@@ -299,7 +299,7 @@ const PayLink = () => {
                 )}
 
                 {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button className="w-full" onClick={start}>Pay {formatMoney(amount, link.currency)}</Button>
+                <Button className="w-full" onClick={start}>Pay {formatMoney(total, link.currency)}</Button>
               </>
             )}
 
