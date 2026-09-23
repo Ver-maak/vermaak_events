@@ -74,6 +74,12 @@ const PayLink = () => {
     return Number(link.unit_amount);
   }, [link, quantity, openAmount]);
 
+  const fee = useMemo(() => {
+    if (!link || amount <= 0) return 0;
+    return Math.max(0, Math.round(amount * (Number(link.commission_percent || 0) / 100) + Number(link.commission_flat || 0)));
+  }, [link, amount]);
+  const total = amount + fee;
+
   const cardCheck = validateCard(cardNumber);
   const normalizedPhone = normalizePhone(phone);
   const validPhone = /^2567\d{8}$/.test(normalizedPhone);
