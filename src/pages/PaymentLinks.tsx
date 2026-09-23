@@ -237,6 +237,13 @@ const PaymentLinks = () => {
                 <div><Label>Maximum (optional)</Label><Input type="number" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} /></div>
               </div>
             )}
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Commission %</Label>
+                <Input type="number" min={0} value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="0" /></div>
+              <div><Label>Commission flat ({currency})</Label>
+                <Input type="number" min={0} value={commissionFlat} onChange={(e) => setCommissionFlat(e.target.value)} placeholder="0" /></div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-1">Added on top of the amount, so the payer covers it.</p>
             <div><Label>Extra question (optional)</Label><Input value={noteLabel} onChange={(e) => setNoteLabel(e.target.value)} placeholder="e.g. Which club are you from?" /></div>
             {noteLabel && (
               <div className="flex items-center gap-2">
