@@ -31,6 +31,8 @@ const PaymentLinks = () => {
   const [maxAmount, setMaxAmount] = useState("");
   const [noteLabel, setNoteLabel] = useState("");
   const [noteRequired, setNoteRequired] = useState(false);
+  const [commissionPercent, setCommissionPercent] = useState("");
+  const [commissionFlat, setCommissionFlat] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
 
   const links = useQuery({
@@ -77,6 +79,8 @@ const PaymentLinks = () => {
         max_amount: amountMode === "open" && maxAmount ? Number(maxAmount) : null,
         note_label: noteLabel.trim() || null,
         note_required: noteRequired,
+        commission_percent: Number(commissionPercent || 0),
+        commission_flat: Number(commissionFlat || 0),
         is_active: true,
         created_by: uid,
       });
@@ -87,6 +91,7 @@ const PaymentLinks = () => {
       setOpen(false);
       setTitle(""); setSlug(""); setDescription(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
       setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed");
+      setCommissionPercent(""); setCommissionFlat("");
       qc.invalidateQueries({ queryKey: ["payment-links"] });
     },
     onError: (e: Error) => toast({ title: "Could not create link", description: e.message, variant: "destructive" }),
@@ -107,6 +112,7 @@ const PaymentLinks = () => {
 
   const paid = (payments.data || []).filter((p: any) => p.status === "paid");
   const collected = paid.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+  const commissionTotal = paid.reduce((sum: number, p: any) => sum + Number(p.commission_amount || 0), 0);
 
   return (
     <DashboardLayout>
@@ -133,7 +139,12 @@ const PaymentLinks = () => {
                   <p className="font-medium text-sm">{l.title}</p>
                   <p className="text-xs text-muted-foreground">
                     /pay/{l.slug} · {l.amount_mode === "open" ? "Payer enters amount" :
-                      `${l.currency} ${Number(l.unit_amount).toLocaleString()}${l.amount_mode === "quantity" ? " each" : ""}`}
+                    `${l.currency} ${Number(l.unit_amount).toLocaleString()}${l.amount_mode === "quantity" ? " each" : ""}`}
+                    {(Number(l.commission_percent) > 0 || Number(l.commission_flat) > 0) && (
+                      <> · fee {Number(l.commission_percent) > 0 ? `${Number(l.commission_percent)}%` : ""}
+                        {Number(l.commission_percent) > 0 && Number(l.commission_flat) > 0 ? " + " : ""}
+                        {Number(l.commission_flat) > 0 ? `${l.currency} ${Number(l.commission_flat).toLocaleString()}` : ""}</>
+                    )}
                   </p>
                 </div>
                 <Badge variant={l.is_active ? "default" : "secondary"}>{l.is_active ? "Active" : "Off"}</Badge>
@@ -154,14 +165,14 @@ const PaymentLinks = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Payments</CardTitle>
-              <CardDescription>{paid.length} paid · {collected.toLocaleString()} collected</CardDescription>
+              <CardDescription>{paid.length} paid · {collected.toLocaleString()} collected · {commissionTotal.toLocaleString()} in fees</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-muted-foreground border-b border-border">
                     <th className="py-2 pr-3">Reference</th><th className="py-2 pr-3">Payer</th>
-                    <th className="py-2 pr-3">Amount</th><th className="py-2 pr-3">Status</th><th className="py-2">Date</th>
+                    <th className="py-2 pr-3">Amount</th><th className="py-2 pr-3">Fee</th><th className="py-2 pr-3">Status</th><th className="py-2">Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -170,12 +181,13 @@ const PaymentLinks = () => {
                       <td className="py-2 pr-3 font-mono text-xs">{p.reference}</td>
                       <td className="py-2 pr-3">{p.payer_name}<br /><span className="text-xs text-muted-foreground">{p.payer_email}</span></td>
                       <td className="py-2 pr-3">{p.currency} {Number(p.amount).toLocaleString()}</td>
+                      <td className="py-2 pr-3 text-muted-foreground">{Number(p.commission_amount || 0).toLocaleString()}</td>
                       <td className="py-2 pr-3"><Badge variant={p.status === "paid" ? "default" : "secondary"}>{p.status}</Badge></td>
                       <td className="py-2 text-xs text-muted-foreground">{format(new Date(p.created_at), "dd MMM yyyy HH:mm")}</td>
                     </tr>
                   ))}
                   {(payments.data || []).length === 0 && (
-                    <tr><td colSpan={5} className="py-3 text-muted-foreground">No payments yet.</td></tr>
+                    <tr><td colSpan={6} className="py-3 text-muted-foreground">No payments yet.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -225,6 +237,13 @@ const PaymentLinks = () => {
                 <div><Label>Maximum (optional)</Label><Input type="number" value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} /></div>
               </div>
             )}
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Commission %</Label>
+                <Input type="number" min={0} value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="0" /></div>
+              <div><Label>Commission flat ({currency})</Label>
+                <Input type="number" min={0} value={commissionFlat} onChange={(e) => setCommissionFlat(e.target.value)} placeholder="0" /></div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-1">Added on top of the amount, so the payer covers it.</p>
             <div><Label>Extra question (optional)</Label><Input value={noteLabel} onChange={(e) => setNoteLabel(e.target.value)} placeholder="e.g. Which club are you from?" /></div>
             {noteLabel && (
               <div className="flex items-center gap-2">

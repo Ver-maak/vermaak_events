@@ -43,6 +43,13 @@ Deno.serve(async (req) => {
     }
     chargeAmount = Math.round(chargeAmount);
     if (chargeAmount <= 0) return json({ ok: false, error: "This payment link has no amount set." });
+
+    // Commission is added on top of the link amount and paid by the payer.
+    const baseAmount = chargeAmount;
+    const commission = Math.round(
+      baseAmount * (Number(link.commission_percent || 0) / 100) + Number(link.commission_flat || 0),
+    );
+    chargeAmount = baseAmount + Math.max(0, commission);
     if (link.note_required && !String(note || "").trim()) {
       return json({ ok: false, error: `${link.note_label || "Note"} is required.` });
     }
@@ -87,6 +94,8 @@ Deno.serve(async (req) => {
       note: note || null,
       quantity: qty,
       amount: chargeAmount,
+      base_amount: baseAmount,
+      commission_amount: Math.max(0, commission),
       currency: link.currency,
       status: "pending",
       provider: providerCode,
