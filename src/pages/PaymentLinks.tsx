@@ -165,7 +165,7 @@ const PaymentLinks = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Payments</CardTitle>
-              <CardDescription>{paid.length} paid · {collected.toLocaleString()} collected</CardDescription>
+              <CardDescription>{paid.length} paid · {collected.toLocaleString()} collected · {commissionTotal.toLocaleString()} in fees</CardDescription>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <table className="w-full text-sm">
