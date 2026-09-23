@@ -112,6 +112,7 @@ const PaymentLinks = () => {
 
   const paid = (payments.data || []).filter((p: any) => p.status === "paid");
   const collected = paid.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+  const commissionTotal = paid.reduce((sum: number, p: any) => sum + Number(p.commission_amount || 0), 0);
 
   return (
     <DashboardLayout>
@@ -138,7 +139,12 @@ const PaymentLinks = () => {
                   <p className="font-medium text-sm">{l.title}</p>
                   <p className="text-xs text-muted-foreground">
                     /pay/{l.slug} · {l.amount_mode === "open" ? "Payer enters amount" :
-                      `${l.currency} ${Number(l.unit_amount).toLocaleString()}${l.amount_mode === "quantity" ? " each" : ""}`}
+                    `${l.currency} ${Number(l.unit_amount).toLocaleString()}${l.amount_mode === "quantity" ? " each" : ""}`}
+                    {(Number(l.commission_percent) > 0 || Number(l.commission_flat) > 0) && (
+                      <> · fee {Number(l.commission_percent) > 0 ? `${Number(l.commission_percent)}%` : ""}
+                        {Number(l.commission_percent) > 0 && Number(l.commission_flat) > 0 ? " + " : ""}
+                        {Number(l.commission_flat) > 0 ? `${l.currency} ${Number(l.commission_flat).toLocaleString()}` : ""}</>
+                    )}
                   </p>
                 </div>
                 <Badge variant={l.is_active ? "default" : "secondary"}>{l.is_active ? "Active" : "Off"}</Badge>
