@@ -79,6 +79,8 @@ const PaymentLinks = () => {
         max_amount: amountMode === "open" && maxAmount ? Number(maxAmount) : null,
         note_label: noteLabel.trim() || null,
         note_required: noteRequired,
+        commission_percent: Number(commissionPercent || 0),
+        commission_flat: Number(commissionFlat || 0),
         is_active: true,
         created_by: uid,
       });
@@ -89,6 +91,7 @@ const PaymentLinks = () => {
       setOpen(false);
       setTitle(""); setSlug(""); setDescription(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
       setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed");
+      setCommissionPercent(""); setCommissionFlat("");
       qc.invalidateQueries({ queryKey: ["payment-links"] });
     },
     onError: (e: Error) => toast({ title: "Could not create link", description: e.message, variant: "destructive" }),
