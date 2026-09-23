@@ -633,6 +633,8 @@ export type Database = {
       payment_link_payments: {
         Row: {
           amount: number
+          base_amount: number | null
+          commission_amount: number
           created_at: string
           currency: string
           id: string
@@ -652,6 +654,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          base_amount?: number | null
+          commission_amount?: number
           created_at?: string
           currency?: string
           id?: string
@@ -671,6 +675,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          base_amount?: number | null
+          commission_amount?: number
           created_at?: string
           currency?: string
           id?: string
@@ -701,6 +707,8 @@ export type Database = {
       payment_links: {
         Row: {
           amount_mode: string
+          commission_flat: number
+          commission_percent: number
           created_at: string
           created_by: string
           currency: string
@@ -719,6 +727,8 @@ export type Database = {
         }
         Insert: {
           amount_mode?: string
+          commission_flat?: number
+          commission_percent?: number
           created_at?: string
           created_by: string
           currency?: string
@@ -737,6 +747,8 @@ export type Database = {
         }
         Update: {
           amount_mode?: string
+          commission_flat?: number
+          commission_percent?: number
           created_at?: string
           created_by?: string
           currency?: string
