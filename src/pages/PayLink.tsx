@@ -223,9 +223,21 @@ const PayLink = () => {
           <CardContent className="space-y-4">
             {stage === "form" && (
               <>
-                <div className="rounded-lg border border-border bg-muted/30 p-3 flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Amount</span>
-                  <span className="font-bold text-primary">{formatMoney(amount, link.currency)}</span>
+                <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Amount</span>
+                    <span>{formatMoney(amount, link.currency)}</span>
+                  </div>
+                  {fee > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Service fee</span>
+                      <span>{formatMoney(fee, link.currency)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-1 border-t border-border">
+                    <span className="text-sm text-muted-foreground">Total</span>
+                    <span className="font-bold text-primary">{formatMoney(total, link.currency)}</span>
+                  </div>
                 </div>
 
                 {link.amount_mode === "quantity" && (
