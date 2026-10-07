@@ -12,8 +12,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Copy, Plus, Link2, ExternalLink } from "lucide-react";
+import { Copy, Plus, Link2, ExternalLink, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+
+type FieldType = "text" | "textarea" | "number" | "phone" | "date" | "select";
+interface DraftField { id: string; label: string; type: FieldType; required: boolean; options: string }
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
@@ -33,6 +36,7 @@ const PaymentLinks = () => {
   const [noteRequired, setNoteRequired] = useState(false);
   const [commissionPercent, setCommissionPercent] = useState("3.5");
   const [commissionFlat, setCommissionFlat] = useState("");
+  const [fields, setFields] = useState<DraftField[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
 
   const links = useQuery({
@@ -79,18 +83,22 @@ const PaymentLinks = () => {
         max_amount: amountMode === "open" && maxAmount ? Number(maxAmount) : null,
         note_label: noteLabel.trim() || null,
         note_required: noteRequired,
+        custom_fields: fields.filter((f) => f.label.trim()).map((f) => ({
+          id: f.id, label: f.label.trim(), type: f.type, required: f.required,
+          options: f.type === "select" ? f.options.split(",").map((o) => o.trim()).filter(Boolean) : [],
+        })),
         commission_percent: Number(commissionPercent || 0),
         commission_flat: Number(commissionFlat || 0),
         is_active: true,
         created_by: uid,
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       toast({ title: "Payment link created" });
       setOpen(false);
       setTitle(""); setSlug(""); setDescription(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
-      setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed");
+      setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed"); setFields([]);
       setCommissionPercent("3.5"); setCommissionFlat("");
       qc.invalidateQueries({ queryKey: ["payment-links"] });
     },
@@ -172,18 +180,26 @@ const PaymentLinks = () => {
                 <thead>
                   <tr className="text-left text-muted-foreground border-b border-border">
                     <th className="py-2 pr-3">Reference</th><th className="py-2 pr-3">Payer</th>
-                    <th className="py-2 pr-3">Amount</th><th className="py-2 pr-3">Fee</th><th className="py-2 pr-3">Status</th><th className="py-2">Date</th>
+                    <th className="py-2 pr-3">Amount</th><th className="py-2 pr-3">Fee</th><th className="py-2 pr-3">Status</th><th className="py-2 pr-3">Date</th>
+                    <th className="py-2">Details</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(payments.data || []).map((p: any) => (
-                    <tr key={p.id} className="border-b border-border/50">
+                    <tr key={p.id} className="border-b border-border/50 align-top">
                       <td className="py-2 pr-3 font-mono text-xs">{p.reference}</td>
                       <td className="py-2 pr-3">{p.payer_name}<br /><span className="text-xs text-muted-foreground">{p.payer_email}</span></td>
                       <td className="py-2 pr-3">{p.currency} {Number(p.amount).toLocaleString()}</td>
                       <td className="py-2 pr-3 text-muted-foreground">{Number(p.commission_amount || 0).toLocaleString()}</td>
                       <td className="py-2 pr-3"><Badge variant={p.status === "paid" ? "default" : "secondary"}>{p.status}</Badge></td>
-                      <td className="py-2 text-xs text-muted-foreground">{format(new Date(p.created_at), "dd MMM yyyy HH:mm")}</td>
+                      <td className="py-2 pr-3 text-xs text-muted-foreground">{format(new Date(p.created_at), "dd MMM yyyy HH:mm")}</td>
+                      <td className="py-2 text-xs">
+                        {p.payer_phone && <div><span className="text-muted-foreground">Phone:</span> {p.payer_phone}</div>}
+                        {p.note && <div><span className="text-muted-foreground">Note:</span> {p.note}</div>}
+                        {Object.entries((p.responses || {}) as Record<string, any>).map(([k, v]) => (
+                          <div key={k}><span className="text-muted-foreground">{k}:</span> {String(v)}</div>
+                        ))}
+                      </td>
                     </tr>
                   ))}
                   {(payments.data || []).length === 0 && (
@@ -244,13 +260,46 @@ const PaymentLinks = () => {
                 <Input type="number" min={0} value={commissionFlat} onChange={(e) => setCommissionFlat(e.target.value)} placeholder="0" /></div>
             </div>
             <p className="text-xs text-muted-foreground -mt-1">Added on top of the amount, so the payer covers it.</p>
-            <div><Label>Extra question (optional)</Label><Input value={noteLabel} onChange={(e) => setNoteLabel(e.target.value)} placeholder="e.g. Which club are you from?" /></div>
-            {noteLabel && (
-              <div className="flex items-center gap-2">
-                <Switch checked={noteRequired} onCheckedChange={setNoteRequired} />
-                <span className="text-sm">Required</span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Extra information to collect</Label>
+                <Button type="button" variant="outline" size="sm"
+                  onClick={() => setFields([...fields, { id: crypto.randomUUID().slice(0, 8), label: "", type: "text", required: false, options: "" }])}>
+                  <Plus className="h-3 w-3 mr-1" />Add field
+                </Button>
               </div>
-            )}
+              {fields.length === 0 && <p className="text-xs text-muted-foreground">Name, email and payment details are always collected.</p>}
+              {fields.map((f, i) => (
+                <div key={f.id} className="border border-border rounded-lg p-2 space-y-2">
+                  <div className="flex gap-2">
+                    <Input value={f.label} placeholder="Question, e.g. Company name"
+                      onChange={(e) => setFields(fields.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} />
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setFields(fields.filter((_, j) => j !== i))}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={f.type} onValueChange={(v) => setFields(fields.map((x, j) => j === i ? { ...x, type: v as FieldType } : x))}>
+                      <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Short answer</SelectItem>
+                        <SelectItem value="textarea">Long answer</SelectItem>
+                        <SelectItem value="number">Number</SelectItem>
+                        <SelectItem value="phone">Phone</SelectItem>
+                        <SelectItem value="date">Date</SelectItem>
+                        <SelectItem value="select">Dropdown</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Switch checked={f.required} onCheckedChange={(v) => setFields(fields.map((x, j) => j === i ? { ...x, required: v } : x))} />
+                    <span className="text-sm">Required</span>
+                  </div>
+                  {f.type === "select" && (
+                    <Input value={f.options} placeholder="Choices, separated by commas"
+                      onChange={(e) => setFields(fields.map((x, j) => j === i ? { ...x, options: e.target.value } : x))} />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
