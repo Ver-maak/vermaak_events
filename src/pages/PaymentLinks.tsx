@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Copy, Plus, Link2, ExternalLink, Trash2 } from "lucide-react";
+import { Copy, Plus, Link2, ExternalLink, Trash2, Pencil } from "lucide-react";
 import { format } from "date-fns";
 
 type FieldType = "text" | "textarea" | "number" | "phone" | "date" | "select";
@@ -149,7 +149,7 @@ const PaymentLinks = () => {
             <h1 className="text-2xl font-bold">Payment links</h1>
             <p className="text-sm text-muted-foreground">Collect payments from anywhere — no event needed.</p>
           </div>
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" />New link</Button>
+          <Button onClick={() => { resetForm(); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />New link</Button>
         </div>
 
         <Card>
@@ -176,6 +176,7 @@ const PaymentLinks = () => {
                 </div>
                 <Badge variant={l.is_active ? "default" : "secondary"}>{l.is_active ? "Active" : "Off"}</Badge>
                 <Switch checked={l.is_active} onCheckedChange={(v) => toggleActive.mutate({ id: l.id, active: v })} />
+                <Button variant="outline" size="sm" onClick={() => openEdit(l)}><Pencil className="h-4 w-4" /></Button>
                 <Button variant="outline" size="sm" onClick={() => copy(l.slug)}><Copy className="h-4 w-4" /></Button>
                 <Button variant="outline" size="sm" asChild>
                   <a href={`/pay/${l.slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a>
@@ -234,7 +235,7 @@ const PaymentLinks = () => {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New payment link</DialogTitle>
+            <DialogTitle>{editingId ? "Edit payment link" : "New payment link"}</DialogTitle>
             <DialogDescription>Share this link anywhere to start collecting payments.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -322,7 +323,7 @@ const PaymentLinks = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={() => create.mutate()} disabled={create.isPending}>Create link</Button>
+            <Button onClick={() => create.mutate()} disabled={create.isPending}>{editingId ? "Save changes" : "Create link"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
