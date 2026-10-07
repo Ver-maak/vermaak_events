@@ -203,7 +203,7 @@ const PaymentLinks = () => {
                     </tr>
                   ))}
                   {(payments.data || []).length === 0 && (
-                    <tr><td colSpan={6} className="py-3 text-muted-foreground">No payments yet.</td></tr>
+                    <tr><td colSpan={7} className="py-3 text-muted-foreground">No payments yet.</td></tr>
                   )}
                 </tbody>
               </table>
