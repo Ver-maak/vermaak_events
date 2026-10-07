@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Copy, Plus, Link2, ExternalLink, Trash2 } from "lucide-react";
+import { Copy, Plus, Link2, ExternalLink, Trash2, Pencil } from "lucide-react";
 import { format } from "date-fns";
 
 type FieldType = "text" | "textarea" | "number" | "phone" | "date" | "select";
@@ -62,6 +62,26 @@ const PaymentLinks = () => {
     },
   });
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle(""); setSlug(""); setDescription(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
+    setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed"); setFields([]); setCurrency("UGX");
+    setCommissionPercent("3.5"); setCommissionFlat("");
+  };
+  const openEdit = (l: any) => {
+    setEditingId(l.id);
+    setTitle(l.title); setSlug(l.slug); setDescription(l.description || ""); setCurrency(l.currency);
+    setAmountMode(l.amount_mode); setUnitAmount(l.amount_mode === "open" ? "" : String(l.unit_amount));
+    setMinAmount(l.min_amount != null ? String(l.min_amount) : ""); setMaxAmount(l.max_amount != null ? String(l.max_amount) : "");
+    setNoteLabel(l.note_label || ""); setNoteRequired(!!l.note_required);
+    setCommissionPercent(String(l.commission_percent ?? 0)); setCommissionFlat(Number(l.commission_flat) ? String(l.commission_flat) : "");
+    setFields((Array.isArray(l.custom_fields) ? l.custom_fields : []).map((f: any) => ({
+      id: f.id, label: f.label, type: f.type, required: !!f.required, options: (f.options || []).join(", "),
+    })));
+    setOpen(true);
+  };
+
   const create = useMutation({
     mutationFn: async () => {
       const { data: userRes } = await supabase.auth.getUser();
@@ -72,7 +92,7 @@ const PaymentLinks = () => {
       if (!finalSlug) throw new Error("Enter a valid web address.");
       const unit = Number(unitAmount || 0);
       if (amountMode !== "open" && (!Number.isFinite(unit) || unit <= 0)) throw new Error("Enter a valid amount.");
-      const { error } = await supabase.from("payment_links").insert({
+      const payload: any = {
         title: title.trim(),
         slug: finalSlug,
         description: description.trim() || null,
@@ -89,20 +109,19 @@ const PaymentLinks = () => {
         })),
         commission_percent: Number(commissionPercent || 0),
         commission_flat: Number(commissionFlat || 0),
-        is_active: true,
-        created_by: uid,
-      } as any);
+      };
+      const { error } = editingId
+        ? await supabase.from("payment_links").update(payload).eq("id", editingId)
+        : await supabase.from("payment_links").insert({ ...payload, is_active: true, created_by: uid });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Payment link created" });
+      toast({ title: editingId ? "Payment link updated" : "Payment link created" });
       setOpen(false);
-      setTitle(""); setSlug(""); setDescription(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
-      setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed"); setFields([]);
-      setCommissionPercent("3.5"); setCommissionFlat("");
+      resetForm();
       qc.invalidateQueries({ queryKey: ["payment-links"] });
     },
-    onError: (e: Error) => toast({ title: "Could not create link", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Could not save link", description: e.message, variant: "destructive" }),
   });
 
   const toggleActive = useMutation({
@@ -130,7 +149,7 @@ const PaymentLinks = () => {
             <h1 className="text-2xl font-bold">Payment links</h1>
             <p className="text-sm text-muted-foreground">Collect payments from anywhere — no event needed.</p>
           </div>
-          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" />New link</Button>
+          <Button onClick={() => { resetForm(); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />New link</Button>
         </div>
 
         <Card>
@@ -157,6 +176,7 @@ const PaymentLinks = () => {
                 </div>
                 <Badge variant={l.is_active ? "default" : "secondary"}>{l.is_active ? "Active" : "Off"}</Badge>
                 <Switch checked={l.is_active} onCheckedChange={(v) => toggleActive.mutate({ id: l.id, active: v })} />
+                <Button variant="outline" size="sm" onClick={() => openEdit(l)}><Pencil className="h-4 w-4" /></Button>
                 <Button variant="outline" size="sm" onClick={() => copy(l.slug)}><Copy className="h-4 w-4" /></Button>
                 <Button variant="outline" size="sm" asChild>
                   <a href={`/pay/${l.slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a>
@@ -215,7 +235,7 @@ const PaymentLinks = () => {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New payment link</DialogTitle>
+            <DialogTitle>{editingId ? "Edit payment link" : "New payment link"}</DialogTitle>
             <DialogDescription>Share this link anywhere to start collecting payments.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -303,7 +323,7 @@ const PaymentLinks = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={() => create.mutate()} disabled={create.isPending}>Create link</Button>
+            <Button onClick={() => create.mutate()} disabled={create.isPending}>{editingId ? "Save changes" : "Create link"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
