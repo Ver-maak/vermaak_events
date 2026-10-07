@@ -15,6 +15,13 @@
       "when": 1790149934778,
       "tag": "0001_paylink_default_commission_3_5",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791395385045,
+      "tag": "0002_paylink_custom_fields",
+      "breakpoints": true
     }
   ]
 }
