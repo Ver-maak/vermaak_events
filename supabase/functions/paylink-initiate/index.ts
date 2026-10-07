@@ -53,6 +53,17 @@ Deno.serve(async (req) => {
     if (link.note_required && !String(note || "").trim()) {
       return json({ ok: false, error: `${link.note_label || "Note"} is required.` });
     }
+    // Custom fields: store answers keyed by the field label for easy reading.
+    const rawAnswers = ((body as any).answers || {}) as Record<string, unknown>;
+    const responses: Record<string, string> = {};
+    for (const f of (Array.isArray(link.custom_fields) ? link.custom_fields : []) as any[]) {
+      const v = String(rawAnswers[f.id] ?? "").trim().slice(0, 500);
+      if (f.required && !v) return json({ ok: false, error: `${f.label} is required.` });
+      if (v && f.type === "select" && Array.isArray(f.options) && f.options.length && !f.options.includes(v)) {
+        return json({ ok: false, error: `Choose a valid option for ${f.label}.` });
+      }
+      if (v) responses[String(f.label).slice(0, 120)] = v;
+    }
 
     const isCard = channel === "card";
     if (isCard) {

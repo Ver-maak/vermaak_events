@@ -649,6 +649,7 @@ export type Database = {
           quantity: number
           raw: Json
           reference: string
+          responses: Json
           status: string
           updated_at: string
         }
@@ -670,6 +671,7 @@ export type Database = {
           quantity?: number
           raw?: Json
           reference: string
+          responses?: Json
           status?: string
           updated_at?: string
         }
@@ -691,6 +693,7 @@ export type Database = {
           quantity?: number
           raw?: Json
           reference?: string
+          responses?: Json
           status?: string
           updated_at?: string
         }
@@ -712,6 +715,7 @@ export type Database = {
           created_at: string
           created_by: string
           currency: string
+          custom_fields: Json
           description: string | null
           id: string
           is_active: boolean
@@ -732,6 +736,7 @@ export type Database = {
           created_at?: string
           created_by: string
           currency?: string
+          custom_fields?: Json
           description?: string | null
           id?: string
           is_active?: boolean
@@ -752,6 +757,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           currency?: string
+          custom_fields?: Json
           description?: string | null
           id?: string
           is_active?: boolean

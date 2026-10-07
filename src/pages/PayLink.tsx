@@ -49,6 +49,7 @@ const PayLink = () => {
   const [note, setNote] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [openAmount, setOpenAmount] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [channel, setChannel] = useState<"momo" | "card">("momo");
   const [cardNumber, setCardNumber] = useState("");
 
@@ -81,6 +82,8 @@ const PayLink = () => {
   const total = amount + fee;
 
   const cardCheck = validateCard(cardNumber);
+  const customFields: { id: string; label: string; type: string; required: boolean; options?: string[] }[] =
+    Array.isArray(link?.custom_fields) ? link.custom_fields : [];
   const normalizedPhone = normalizePhone(phone);
   const validPhone = /^2567\d{8}$/.test(normalizedPhone);
 
@@ -91,6 +94,9 @@ const PayLink = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("Enter a valid email address");
     if (amount <= 0) return setError("Enter a valid amount");
     if (link.note_required && !note.trim()) return setError(`${link.note_label || "Note"} is required`);
+    for (const f of customFields) {
+      if (f.required && !String(answers[f.id] || "").trim()) return setError(`${f.label} is required`);
+    }
     if (channel === "momo" && !validPhone) return setError("Enter a valid Ugandan mobile money number");
     if (channel === "card" && !cardCheck.valid) return setError(cardCheck.error || "Enter a valid card");
 
@@ -104,6 +110,7 @@ const PayLink = () => {
         amount: link.amount_mode === "open" ? amount : undefined,
         quantity: link.amount_mode === "quantity" ? quantity : undefined,
         note: note.trim() || undefined,
+        answers,
         channel,
         card: channel === "card" ? { brand: cardCheck.brand, last4: cardCheck.last4 } : undefined,
       },
@@ -268,6 +275,23 @@ const PayLink = () => {
                     <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={2} />
                   </div>
                 )}
+                {customFields.map((f) => (
+                  <div key={f.id} className="space-y-2">
+                    <Label>{f.label}{f.required ? " *" : ""}</Label>
+                    {f.type === "textarea" ? (
+                      <Textarea value={answers[f.id] || ""} onChange={(e) => setAnswers({ ...answers, [f.id]: e.target.value })} maxLength={500} rows={2} />
+                    ) : f.type === "select" ? (
+                      <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        value={answers[f.id] || ""} onChange={(e) => setAnswers({ ...answers, [f.id]: e.target.value })}>
+                        <option value="">Select…</option>
+                        {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : (
+                      <Input type={f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "phone" ? "tel" : "text"}
+                        value={answers[f.id] || ""} onChange={(e) => setAnswers({ ...answers, [f.id]: e.target.value })} maxLength={200} />
+                    )}
+                  </div>
+                ))}
 
                 <div className="space-y-2">
                   <Label>Payment method</Label>

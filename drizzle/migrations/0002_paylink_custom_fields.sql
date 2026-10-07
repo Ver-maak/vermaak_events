@@ -1,0 +1,2 @@
+ALTER TABLE public.payment_links ADD COLUMN IF NOT EXISTS custom_fields jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.payment_link_payments ADD COLUMN IF NOT EXISTS responses jsonb NOT NULL DEFAULT '{}'::jsonb;
