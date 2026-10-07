@@ -62,6 +62,26 @@ const PaymentLinks = () => {
     },
   });
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle(""); setSlug(""); setDescription(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
+    setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed"); setFields([]); setCurrency("UGX");
+    setCommissionPercent("3.5"); setCommissionFlat("");
+  };
+  const openEdit = (l: any) => {
+    setEditingId(l.id);
+    setTitle(l.title); setSlug(l.slug); setDescription(l.description || ""); setCurrency(l.currency);
+    setAmountMode(l.amount_mode); setUnitAmount(l.amount_mode === "open" ? "" : String(l.unit_amount));
+    setMinAmount(l.min_amount != null ? String(l.min_amount) : ""); setMaxAmount(l.max_amount != null ? String(l.max_amount) : "");
+    setNoteLabel(l.note_label || ""); setNoteRequired(!!l.note_required);
+    setCommissionPercent(String(l.commission_percent ?? 0)); setCommissionFlat(Number(l.commission_flat) ? String(l.commission_flat) : "");
+    setFields((Array.isArray(l.custom_fields) ? l.custom_fields : []).map((f: any) => ({
+      id: f.id, label: f.label, type: f.type, required: !!f.required, options: (f.options || []).join(", "),
+    })));
+    setOpen(true);
+  };
+
   const create = useMutation({
     mutationFn: async () => {
       const { data: userRes } = await supabase.auth.getUser();
@@ -72,7 +92,7 @@ const PaymentLinks = () => {
       if (!finalSlug) throw new Error("Enter a valid web address.");
       const unit = Number(unitAmount || 0);
       if (amountMode !== "open" && (!Number.isFinite(unit) || unit <= 0)) throw new Error("Enter a valid amount.");
-      const { error } = await supabase.from("payment_links").insert({
+      const payload: any = {
         title: title.trim(),
         slug: finalSlug,
         description: description.trim() || null,
@@ -89,20 +109,19 @@ const PaymentLinks = () => {
         })),
         commission_percent: Number(commissionPercent || 0),
         commission_flat: Number(commissionFlat || 0),
-        is_active: true,
-        created_by: uid,
-      } as any);
+      };
+      const { error } = editingId
+        ? await supabase.from("payment_links").update(payload).eq("id", editingId)
+        : await supabase.from("payment_links").insert({ ...payload, is_active: true, created_by: uid });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Payment link created" });
+      toast({ title: editingId ? "Payment link updated" : "Payment link created" });
       setOpen(false);
-      setTitle(""); setSlug(""); setDescription(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
-      setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed"); setFields([]);
-      setCommissionPercent("3.5"); setCommissionFlat("");
+      resetForm();
       qc.invalidateQueries({ queryKey: ["payment-links"] });
     },
-    onError: (e: Error) => toast({ title: "Could not create link", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => toast({ title: "Could not save link", description: e.message, variant: "destructive" }),
   });
 
   const toggleActive = useMutation({
