@@ -13,7 +13,7 @@ import { explainPaymentError, type FriendlyFailure } from "@/lib/paymentErrors";
 import { BRAND_LABEL, formatCardNumber, validateCard, type CardBrand } from "@/lib/cardBrand";
 import { CheckCircle2, CreditCard, Loader2, Smartphone, XCircle, Download } from "lucide-react";
 import jsPDF from "jspdf";
-import { fieldsAtPosition, type FieldPosition } from "@/lib/paymentLinkFields";
+import { fieldsAtPosition, isFieldVisible, type FieldPosition, type ShowIf } from "@/lib/paymentLinkFields";
 
 type Stage = "form" | "waiting" | "success" | "failed";
 
@@ -83,8 +83,9 @@ const PayLink = () => {
   const total = amount + fee;
 
   const cardCheck = validateCard(cardNumber);
-  const customFields: { id: string; label: string; type: string; required: boolean; options?: string[]; blocked_options?: string[]; block_message?: string; position?: FieldPosition }[] =
+  const allFields: { id: string; label: string; type: string; required: boolean; options?: string[]; blocked_options?: string[]; block_message?: string; position?: FieldPosition; show_if?: ShowIf | null }[] =
     Array.isArray(link?.custom_fields) ? link.custom_fields : [];
+  const customFields = allFields.filter((f) => isFieldVisible(f, allFields, answers));
   const blockedField = customFields.find((f) => f.type === "select" && answers[f.id] && (f.blocked_options || []).includes(answers[f.id]));
   const normalizedPhone = normalizePhone(phone);
   const validPhone = /^2567\d{8}$/.test(normalizedPhone);

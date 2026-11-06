@@ -56,7 +56,17 @@ Deno.serve(async (req) => {
     // Custom fields: store answers keyed by the field label for easy reading.
     const rawAnswers = ((body as any).answers || {}) as Record<string, unknown>;
     const responses: Record<string, string> = {};
-    for (const f of (Array.isArray(link.custom_fields) ? link.custom_fields : []) as any[]) {
+    const allFields = (Array.isArray(link.custom_fields) ? link.custom_fields : []) as any[];
+    const visible = (f: any, d = 0): boolean => {
+      const c = f?.show_if;
+      if (!c || !c.field_id) return true;
+      if (d > 20) return false;
+      const p = allFields.find((x) => x.id === c.field_id);
+      if (!p) return true;
+      return visible(p, d + 1) && String(rawAnswers[p.id] ?? "").trim() === c.value;
+    };
+    for (const f of allFields) {
+      if (!visible(f)) continue;
       const v = String(rawAnswers[f.id] ?? "").trim().slice(0, 500);
       if (f.required && !v) return json({ ok: false, error: `${f.label} is required.` });
       if (v && f.type === "select" && Array.isArray(f.options) && f.options.length && !f.options.includes(v)) {

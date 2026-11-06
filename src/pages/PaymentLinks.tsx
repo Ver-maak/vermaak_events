@@ -17,7 +17,7 @@ import { format } from "date-fns";
 import { type FieldPosition } from "@/lib/paymentLinkFields";
 
 type FieldType = "text" | "textarea" | "number" | "phone" | "date" | "select";
-interface DraftField { id: string; label: string; type: FieldType; required: boolean; options: string; blocked: string[]; blockMessage: string; position: FieldPosition }
+interface DraftField { id: string; label: string; type: FieldType; required: boolean; options: string; blocked: string[]; blockMessage: string; position: FieldPosition; showIfField?: string; showIfValue?: string }
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
@@ -81,6 +81,7 @@ const PaymentLinks = () => {
       id: f.id, label: f.label, type: f.type, required: !!f.required, options: (f.options || []).join(", "),
       blocked: Array.isArray(f.blocked_options) ? f.blocked_options : [], blockMessage: f.block_message || "",
       position: f.position === "beginning" ? "beginning" : "end",
+      showIfField: f.show_if?.field_id || "", showIfValue: f.show_if?.value || "",
     })));
     setOpen(true);
   };
@@ -108,6 +109,7 @@ const PaymentLinks = () => {
         note_required: noteRequired,
         custom_fields: fields.filter((f) => f.label.trim()).map((f) => ({
           id: f.id, label: f.label.trim(), type: f.type, required: f.required, position: f.position,
+          show_if: f.showIfField && f.showIfValue && fields.some((p) => p.id === f.showIfField && p.id !== f.id) ? { field_id: f.showIfField, value: f.showIfValue } : null,
           options: f.type === "select" ? f.options.split(",").map((o) => o.trim()).filter(Boolean) : [],
           ...(f.type === "select" ? (() => {
             const opts = f.options.split(",").map((o) => o.trim()).filter(Boolean);
@@ -331,6 +333,35 @@ const PaymentLinks = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  {(() => {
+                    const parents = fields.slice(0, i).filter((p) => p.type === "select" && p.label.trim() && p.options.trim());
+                    if (!parents.length) return null;
+                    const parent = parents.find((p) => p.id === f.showIfField);
+                    const parentOpts = parent ? parent.options.split(",").map((o) => o.trim()).filter(Boolean) : [];
+                    const upd = (patch: Partial<DraftField>) => setFields(fields.map((x, j) => j === i ? { ...x, ...patch } : x));
+                    return (
+                      <div className="space-y-1">
+                        <Label>Show this question</Label>
+                        <div className="flex gap-2">
+                          <Select value={f.showIfField || "always"} onValueChange={(v) => upd({ showIfField: v === "always" ? "" : v, showIfValue: "" })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="always">Always</SelectItem>
+                              {parents.map((p) => <SelectItem key={p.id} value={p.id}>Only when "{p.label}" is…</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          {parent && (
+                            <Select value={f.showIfValue || ""} onValueChange={(v) => upd({ showIfValue: v })}>
+                              <SelectTrigger><SelectValue placeholder="Pick answer" /></SelectTrigger>
+                              <SelectContent>
+                                {parentOpts.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {f.type === "select" && (
                     <Input value={f.options} placeholder="Choices, separated by commas"
                       onChange={(e) => setFields(fields.map((x, j) => j === i ? { ...x, options: e.target.value } : x))} />
