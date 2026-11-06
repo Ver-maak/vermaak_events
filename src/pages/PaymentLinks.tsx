@@ -14,9 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { Copy, Plus, Link2, ExternalLink, Trash2, Pencil } from "lucide-react";
 import { format } from "date-fns";
+import { type FieldPosition } from "@/lib/paymentLinkFields";
 
 type FieldType = "text" | "textarea" | "number" | "phone" | "date" | "select";
-interface DraftField { id: string; label: string; type: FieldType; required: boolean; options: string; blocked: string[]; blockMessage: string }
+interface DraftField { id: string; label: string; type: FieldType; required: boolean; options: string; blocked: string[]; blockMessage: string; position: FieldPosition }
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
@@ -79,6 +80,7 @@ const PaymentLinks = () => {
     setFields((Array.isArray(l.custom_fields) ? l.custom_fields : []).map((f: any) => ({
       id: f.id, label: f.label, type: f.type, required: !!f.required, options: (f.options || []).join(", "),
       blocked: Array.isArray(f.blocked_options) ? f.blocked_options : [], blockMessage: f.block_message || "",
+      position: f.position === "beginning" ? "beginning" : "end",
     })));
     setOpen(true);
   };
@@ -105,7 +107,7 @@ const PaymentLinks = () => {
         note_label: noteLabel.trim() || null,
         note_required: noteRequired,
         custom_fields: fields.filter((f) => f.label.trim()).map((f) => ({
-          id: f.id, label: f.label.trim(), type: f.type, required: f.required,
+          id: f.id, label: f.label.trim(), type: f.type, required: f.required, position: f.position,
           options: f.type === "select" ? f.options.split(",").map((o) => o.trim()).filter(Boolean) : [],
           ...(f.type === "select" ? (() => {
             const opts = f.options.split(",").map((o) => o.trim()).filter(Boolean);
@@ -290,7 +292,7 @@ const PaymentLinks = () => {
               <div className="flex items-center justify-between">
                 <Label>Extra information to collect</Label>
                 <Button type="button" variant="outline" size="sm"
-                  onClick={() => setFields([...fields, { id: crypto.randomUUID().slice(0, 8), label: "", type: "text", required: false, options: "", blocked: [], blockMessage: "" }])}>
+                  onClick={() => setFields([...fields, { id: crypto.randomUUID().slice(0, 8), label: "", type: "text", required: false, options: "", blocked: [], blockMessage: "", position: "end" }])}>
                   <Plus className="h-3 w-3 mr-1" />Add field
                 </Button>
               </div>
@@ -318,6 +320,16 @@ const PaymentLinks = () => {
                     </Select>
                     <Switch checked={f.required} onCheckedChange={(v) => setFields(fields.map((x, j) => j === i ? { ...x, required: v } : x))} />
                     <span className="text-sm">Required</span>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor={`position-${f.id}`}>Question placement</Label>
+                    <Select value={f.position} onValueChange={(v) => setFields(fields.map((x, j) => j === i ? { ...x, position: v as FieldPosition } : x))}>
+                      <SelectTrigger id={`position-${f.id}`}><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="beginning">Beginning — before payer details</SelectItem>
+                        <SelectItem value="end">End — after payer details</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   {f.type === "select" && (
                     <Input value={f.options} placeholder="Choices, separated by commas"

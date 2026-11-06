@@ -13,6 +13,7 @@ import { explainPaymentError, type FriendlyFailure } from "@/lib/paymentErrors";
 import { BRAND_LABEL, formatCardNumber, validateCard, type CardBrand } from "@/lib/cardBrand";
 import { CheckCircle2, CreditCard, Loader2, Smartphone, XCircle, Download } from "lucide-react";
 import jsPDF from "jspdf";
+import { fieldsAtPosition, type FieldPosition } from "@/lib/paymentLinkFields";
 
 type Stage = "form" | "waiting" | "success" | "failed";
 
@@ -82,7 +83,7 @@ const PayLink = () => {
   const total = amount + fee;
 
   const cardCheck = validateCard(cardNumber);
-  const customFields: { id: string; label: string; type: string; required: boolean; options?: string[]; blocked_options?: string[]; block_message?: string }[] =
+  const customFields: { id: string; label: string; type: string; required: boolean; options?: string[]; blocked_options?: string[]; block_message?: string; position?: FieldPosition }[] =
     Array.isArray(link?.custom_fields) ? link.custom_fields : [];
   const blockedField = customFields.find((f) => f.type === "select" && answers[f.id] && (f.blocked_options || []).includes(answers[f.id]));
   const normalizedPhone = normalizePhone(phone);
@@ -203,6 +204,28 @@ const PayLink = () => {
     doc.save(`receipt-${receipt.reference}.pdf`);
   };
 
+  const renderFields = (position: FieldPosition) => fieldsAtPosition(customFields, position).map((f) => (
+                  <div key={f.id} className="space-y-2">
+                    <Label>{f.label}{f.required ? " *" : ""}</Label>
+                    {f.type === "textarea" ? (
+                      <Textarea value={answers[f.id] || ""} onChange={(e) => setAnswers({ ...answers, [f.id]: e.target.value })} maxLength={500} rows={2} />
+                    ) : f.type === "select" ? (
+                      <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                        value={answers[f.id] || ""} onChange={(e) => setAnswers({ ...answers, [f.id]: e.target.value })}>
+                        <option value="">Select…</option>
+                        {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : null}
+                    {f.type === "select" && blockedField?.id === f.id && (
+                      <p className="text-sm text-destructive">{f.block_message || "With this answer, the payment can't continue."}</p>
+                    )}
+                    {f.type === "textarea" || f.type === "select" ? null : (
+                      <Input type={f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "phone" ? "tel" : "text"}
+                        value={answers[f.id] || ""} onChange={(e) => setAnswers({ ...answers, [f.id]: e.target.value })} maxLength={200} />
+                    )}
+                  </div>
+                ));
+
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   if (!link || !link.is_active) {
     return (
@@ -233,6 +256,7 @@ const PayLink = () => {
           <CardContent className="space-y-4">
             {stage === "form" && (
               <>
+                {renderFields("beginning")}
                 <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Amount</span>
@@ -278,27 +302,7 @@ const PayLink = () => {
                     <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={2} />
                   </div>
                 )}
-                {customFields.map((f) => (
-                  <div key={f.id} className="space-y-2">
-                    <Label>{f.label}{f.required ? " *" : ""}</Label>
-                    {f.type === "textarea" ? (
-                      <Textarea value={answers[f.id] || ""} onChange={(e) => setAnswers({ ...answers, [f.id]: e.target.value })} maxLength={500} rows={2} />
-                    ) : f.type === "select" ? (
-                      <select className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                        value={answers[f.id] || ""} onChange={(e) => setAnswers({ ...answers, [f.id]: e.target.value })}>
-                        <option value="">Select…</option>
-                        {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    ) : null}
-                    {f.type === "select" && blockedField?.id === f.id && (
-                      <p className="text-sm text-destructive">{f.block_message || "With this answer, the payment can't continue."}</p>
-                    )}
-                    {f.type === "textarea" || f.type === "select" ? null : (
-                      <Input type={f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "phone" ? "tel" : "text"}
-                        value={answers[f.id] || ""} onChange={(e) => setAnswers({ ...answers, [f.id]: e.target.value })} maxLength={200} />
-                    )}
-                  </div>
-                ))}
+                {renderFields("end")}
 
                 <div className="space-y-2">
                   <Label>Payment method</Label>
