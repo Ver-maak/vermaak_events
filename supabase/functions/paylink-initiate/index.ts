@@ -62,6 +62,9 @@ Deno.serve(async (req) => {
       if (v && f.type === "select" && Array.isArray(f.options) && f.options.length && !f.options.includes(v)) {
         return json({ ok: false, error: `Choose a valid option for ${f.label}.` });
       }
+      if (v && f.type === "select" && Array.isArray(f.blocked_options) && f.blocked_options.includes(v)) {
+        return json({ ok: false, error: String(f.block_message || `This payment can't continue because you answered "${v}" to ${f.label}.`).slice(0, 300) });
+      }
       if (v) responses[String(f.label).slice(0, 120)] = v;
     }
 

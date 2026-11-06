@@ -82,8 +82,9 @@ const PayLink = () => {
   const total = amount + fee;
 
   const cardCheck = validateCard(cardNumber);
-  const customFields: { id: string; label: string; type: string; required: boolean; options?: string[] }[] =
+  const customFields: { id: string; label: string; type: string; required: boolean; options?: string[]; blocked_options?: string[]; block_message?: string }[] =
     Array.isArray(link?.custom_fields) ? link.custom_fields : [];
+  const blockedField = customFields.find((f) => f.type === "select" && answers[f.id] && (f.blocked_options || []).includes(answers[f.id]));
   const normalizedPhone = normalizePhone(phone);
   const validPhone = /^2567\d{8}$/.test(normalizedPhone);
 
@@ -97,6 +98,8 @@ const PayLink = () => {
     for (const f of customFields) {
       if (f.required && !String(answers[f.id] || "").trim()) return setError(`${f.label} is required`);
     }
+    const blocked = blockedField;
+    if (blocked) return setError(blocked.block_message || `This payment can't continue because of your answer to ${blocked.label}.`);
     if (channel === "momo" && !validPhone) return setError("Enter a valid Ugandan mobile money number");
     if (channel === "card" && !cardCheck.valid) return setError(cardCheck.error || "Enter a valid card");
 
@@ -286,7 +289,11 @@ const PayLink = () => {
                         <option value="">Select…</option>
                         {(f.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
                       </select>
-                    ) : (
+                    ) : null}
+                    {f.type === "select" && blockedField?.id === f.id && (
+                      <p className="text-sm text-destructive">{f.block_message || "With this answer, the payment can't continue."}</p>
+                    )}
+                    {f.type === "textarea" || f.type === "select" ? null : (
                       <Input type={f.type === "number" ? "number" : f.type === "date" ? "date" : f.type === "phone" ? "tel" : "text"}
                         value={answers[f.id] || ""} onChange={(e) => setAnswers({ ...answers, [f.id]: e.target.value })} maxLength={200} />
                     )}

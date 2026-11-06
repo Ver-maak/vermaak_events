@@ -16,7 +16,7 @@ import { Copy, Plus, Link2, ExternalLink, Trash2, Pencil } from "lucide-react";
 import { format } from "date-fns";
 
 type FieldType = "text" | "textarea" | "number" | "phone" | "date" | "select";
-interface DraftField { id: string; label: string; type: FieldType; required: boolean; options: string }
+interface DraftField { id: string; label: string; type: FieldType; required: boolean; options: string; blocked: string[]; blockMessage: string }
 
 const slugify = (s: string) =>
   s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
@@ -78,6 +78,7 @@ const PaymentLinks = () => {
     setCommissionPercent(String(l.commission_percent ?? 0)); setCommissionFlat(Number(l.commission_flat) ? String(l.commission_flat) : "");
     setFields((Array.isArray(l.custom_fields) ? l.custom_fields : []).map((f: any) => ({
       id: f.id, label: f.label, type: f.type, required: !!f.required, options: (f.options || []).join(", "),
+      blocked: Array.isArray(f.blocked_options) ? f.blocked_options : [], blockMessage: f.block_message || "",
     })));
     setOpen(true);
   };
@@ -106,6 +107,11 @@ const PaymentLinks = () => {
         custom_fields: fields.filter((f) => f.label.trim()).map((f) => ({
           id: f.id, label: f.label.trim(), type: f.type, required: f.required,
           options: f.type === "select" ? f.options.split(",").map((o) => o.trim()).filter(Boolean) : [],
+          ...(f.type === "select" ? (() => {
+            const opts = f.options.split(",").map((o) => o.trim()).filter(Boolean);
+            const blocked = f.blocked.filter((b) => opts.includes(b));
+            return { blocked_options: blocked, block_message: blocked.length ? f.blockMessage.trim() || null : null };
+          })() : {}),
         })),
         commission_percent: Number(commissionPercent || 0),
         commission_flat: Number(commissionFlat || 0),
@@ -284,7 +290,7 @@ const PaymentLinks = () => {
               <div className="flex items-center justify-between">
                 <Label>Extra information to collect</Label>
                 <Button type="button" variant="outline" size="sm"
-                  onClick={() => setFields([...fields, { id: crypto.randomUUID().slice(0, 8), label: "", type: "text", required: false, options: "" }])}>
+                  onClick={() => setFields([...fields, { id: crypto.randomUUID().slice(0, 8), label: "", type: "text", required: false, options: "", blocked: [], blockMessage: "" }])}>
                   <Plus className="h-3 w-3 mr-1" />Add field
                 </Button>
               </div>
@@ -316,6 +322,31 @@ const PaymentLinks = () => {
                   {f.type === "select" && (
                     <Input value={f.options} placeholder="Choices, separated by commas"
                       onChange={(e) => setFields(fields.map((x, j) => j === i ? { ...x, options: e.target.value } : x))} />
+                  )}
+                  {f.type === "select" && f.options.split(",").map((o) => o.trim()).filter(Boolean).length > 0 && (
+                    <div className="space-y-2 rounded-md bg-muted/50 p-2">
+                      <p className="text-xs font-medium text-muted-foreground">Conditions: what happens when the payer picks each choice</p>
+                      {f.options.split(",").map((o) => o.trim()).filter(Boolean).map((o) => {
+                        const isBlocked = f.blocked.includes(o);
+                        return (
+                          <div key={o} className="flex items-center justify-between gap-2 text-sm">
+                            <span className="truncate">{o}</span>
+                            <Select value={isBlocked ? "stop" : "continue"}
+                              onValueChange={(v) => setFields(fields.map((x, j) => j === i ? { ...x, blocked: v === "stop" ? [...x.blocked.filter((b) => b !== o), o] : x.blocked.filter((b) => b !== o) } : x))}>
+                              <SelectTrigger className="w-44 h-8"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="continue">Continue payment</SelectItem>
+                                <SelectItem value="stop">Stop payment</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      })}
+                      {f.blocked.length > 0 && (
+                        <Input value={f.blockMessage} placeholder="Message shown when payment is stopped (optional)"
+                          onChange={(e) => setFields(fields.map((x, j) => j === i ? { ...x, blockMessage: e.target.value } : x))} />
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
