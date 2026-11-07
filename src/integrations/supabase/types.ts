@@ -719,6 +719,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          logo_url: string | null
           max_amount: number | null
           min_amount: number | null
           note_label: string | null
@@ -740,6 +741,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          logo_url?: string | null
           max_amount?: number | null
           min_amount?: number | null
           note_label?: string | null
@@ -761,6 +763,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          logo_url?: string | null
           max_amount?: number | null
           min_amount?: number | null
           note_label?: string | null

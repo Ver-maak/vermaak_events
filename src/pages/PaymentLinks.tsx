@@ -28,6 +28,21 @@ const PaymentLinks = () => {
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const pickLogo = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast({ title: "Choose an image file", variant: "destructive" });
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 400 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+      setLogoUrl(c.toDataURL("image/png"));
+      URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(file);
+  };
   const [currency, setCurrency] = useState("UGX");
   const [amountMode, setAmountMode] = useState<"fixed" | "quantity" | "open">("fixed");
   const [unitAmount, setUnitAmount] = useState("");
@@ -66,13 +81,13 @@ const PaymentLinks = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const resetForm = () => {
     setEditingId(null);
-    setTitle(""); setSlug(""); setDescription(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
+    setTitle(""); setSlug(""); setDescription(""); setLogoUrl(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
     setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed"); setFields([]); setCurrency("UGX");
     setCommissionPercent("3.5"); setCommissionFlat("");
   };
   const openEdit = (l: any) => {
     setEditingId(l.id);
-    setTitle(l.title); setSlug(l.slug); setDescription(l.description || ""); setCurrency(l.currency);
+    setTitle(l.title); setSlug(l.slug); setDescription(l.description || ""); setLogoUrl(l.logo_url || ""); setCurrency(l.currency);
     setAmountMode(l.amount_mode); setUnitAmount(l.amount_mode === "open" ? "" : String(l.unit_amount));
     setMinAmount(l.min_amount != null ? String(l.min_amount) : ""); setMaxAmount(l.max_amount != null ? String(l.max_amount) : "");
     setNoteLabel(l.note_label || ""); setNoteRequired(!!l.note_required);
@@ -100,6 +115,7 @@ const PaymentLinks = () => {
         title: title.trim(),
         slug: finalSlug,
         description: description.trim() || null,
+        logo_url: logoUrl || null,
         currency,
         amount_mode: amountMode,
         unit_amount: amountMode === "open" ? 0 : unit,
@@ -252,6 +268,17 @@ const PaymentLinks = () => {
             <div><Label>Title</Label><Input value={title} onChange={(e) => { setTitle(e.target.value); if (!slug) setSlug(slugify(e.target.value)); }} /></div>
             <div><Label>Web address</Label><Input value={slug} onChange={(e) => setSlug(slugify(e.target.value))} placeholder="my-payment" /></div>
             <div><Label>Description (optional)</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+            <div className="space-y-1">
+              <Label>Logo (optional)</Label>
+              {logoUrl && (
+                <div className="flex items-center gap-3">
+                  <img src={logoUrl} alt="Logo preview" className="h-12 max-w-[160px] object-contain rounded border border-border bg-background p-1" />
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setLogoUrl("")}>Remove</Button>
+                </div>
+              )}
+              <Input type="file" accept="image/*" onChange={(e) => { pickLogo(e.target.files?.[0]); e.target.value = ""; }} />
+              <p className="text-xs text-muted-foreground">Shown at the top of the payment page.</p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Currency</Label>

@@ -251,6 +251,7 @@ const PayLink = () => {
       <main className="max-w-lg mx-auto px-4 py-8">
         <Card>
           <CardHeader>
+            {link.logo_url && <img src={link.logo_url} alt={`${link.title} logo`} className="h-16 max-w-[200px] object-contain mx-auto mb-2" />}
             <CardTitle>{link.title}</CardTitle>
             {link.description && <p className="text-sm text-muted-foreground">{link.description}</p>}
           </CardHeader>
@@ -258,23 +259,6 @@ const PayLink = () => {
             {stage === "form" && (
               <>
                 {renderFields("beginning")}
-                <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Amount</span>
-                    <span>{formatMoney(amount, link.currency)}</span>
-                  </div>
-                  {fee > 0 && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">Service fee</span>
-                      <span>{formatMoney(fee, link.currency)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center pt-1 border-t border-border">
-                    <span className="text-sm text-muted-foreground">Total</span>
-                    <span className="font-bold text-primary">{formatMoney(total, link.currency)}</span>
-                  </div>
-                </div>
-
                 {link.amount_mode === "quantity" && (
                   <div className="space-y-2">
                     <Label>Quantity ({formatMoney(Number(link.unit_amount), link.currency)} each)</Label>
@@ -333,6 +317,23 @@ const PayLink = () => {
                     )}
                   </div>
                 )}
+
+                <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-muted-foreground">Amount</span>
+                    <span>{formatMoney(amount, link.currency)}</span>
+                  </div>
+                  {fee > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Service fee</span>
+                      <span>{formatMoney(fee, link.currency)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-1 border-t border-border">
+                    <span className="text-sm text-muted-foreground">Total</span>
+                    <span className="font-bold text-primary">{formatMoney(total, link.currency)}</span>
+                  </div>
+                </div>
 
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button className="w-full" onClick={start}>Pay {formatMoney(total, link.currency)}</Button>
