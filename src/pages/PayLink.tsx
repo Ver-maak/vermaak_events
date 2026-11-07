@@ -259,25 +259,6 @@ const PayLink = () => {
             {stage === "form" && (
               <>
                 {renderFields("beginning")}
-                {link.amount_mode === "quantity" && (
-                  <div className="space-y-2">
-                    <Label>Quantity ({formatMoney(Number(link.unit_amount), link.currency)} each)</Label>
-                    <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} />
-                  </div>
-                )}
-                {link.amount_mode === "open" && (
-                  <div className="space-y-2">
-                    <Label>Amount you want to pay</Label>
-                    <Input type="number" min={0} value={openAmount} onChange={(e) => setOpenAmount(e.target.value)} placeholder="0" />
-                    {(link.min_amount || link.max_amount) && (
-                      <p className="text-xs text-muted-foreground">
-                        {link.min_amount ? `Min ${formatMoney(Number(link.min_amount), link.currency)}` : ""}
-                        {link.min_amount && link.max_amount ? " · " : ""}
-                        {link.max_amount ? `Max ${formatMoney(Number(link.max_amount), link.currency)}` : ""}
-                      </p>
-                    )}
-                  </div>
-                )}
 
                 <div className="space-y-2"><Label>Full name</Label><Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} /></div>
                 <div className="space-y-2"><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={255} /></div>
@@ -314,6 +295,26 @@ const PayLink = () => {
                     <Input value={formatCardNumber(cardNumber)} onChange={(e) => setCardNumber(e.target.value)} placeholder="0000 0000 0000 0000" inputMode="numeric" />
                     {cardCheck.brand !== "unknown" && (
                       <p className="text-xs text-muted-foreground">{BRAND_LABEL[cardCheck.brand as CardBrand]} detected</p>
+                    )}
+                  </div>
+                )}
+
+                {link.amount_mode === "quantity" && (
+                  <div className="space-y-2">
+                    <Label>Quantity ({formatMoney(Number(link.unit_amount), link.currency)} each)</Label>
+                    <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} />
+                  </div>
+                )}
+                {link.amount_mode === "open" && (
+                  <div className="space-y-2">
+                    <Label>Amount you want to pay</Label>
+                    <Input type="number" min={0} value={openAmount} onChange={(e) => setOpenAmount(e.target.value)} placeholder="0" />
+                    {(link.min_amount || link.max_amount) && (
+                      <p className="text-xs text-muted-foreground">
+                        {link.min_amount ? `Min ${formatMoney(Number(link.min_amount), link.currency)}` : ""}
+                        {link.min_amount && link.max_amount ? " · " : ""}
+                        {link.max_amount ? `Max ${formatMoney(Number(link.max_amount), link.currency)}` : ""}
+                      </p>
                     )}
                   </div>
                 )}
