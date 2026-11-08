@@ -50,6 +50,7 @@ const PaymentLinks = () => {
   const [maxAmount, setMaxAmount] = useState("");
   const [noteLabel, setNoteLabel] = useState("");
   const [noteRequired, setNoteRequired] = useState(false);
+  const [isActive, setIsActive] = useState(true);
   const [commissionPercent, setCommissionPercent] = useState("3.5");
   const [commissionFlat, setCommissionFlat] = useState("");
   const [fields, setFields] = useState<DraftField[]>([]);
@@ -82,7 +83,7 @@ const PaymentLinks = () => {
   const resetForm = () => {
     setEditingId(null);
     setTitle(""); setSlug(""); setDescription(""); setLogoUrl(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
-    setNoteLabel(""); setNoteRequired(false); setAmountMode("fixed"); setFields([]); setCurrency("UGX");
+    setNoteLabel(""); setNoteRequired(false); setIsActive(true); setAmountMode("fixed"); setFields([]); setCurrency("UGX");
     setCommissionPercent("3.5"); setCommissionFlat("");
   };
   const openEdit = (l: any) => {
@@ -90,7 +91,7 @@ const PaymentLinks = () => {
     setTitle(l.title); setSlug(l.slug); setDescription(l.description || ""); setLogoUrl(l.logo_url || ""); setCurrency(l.currency);
     setAmountMode(l.amount_mode); setUnitAmount(l.amount_mode === "open" ? "" : String(l.unit_amount));
     setMinAmount(l.min_amount != null ? String(l.min_amount) : ""); setMaxAmount(l.max_amount != null ? String(l.max_amount) : "");
-    setNoteLabel(l.note_label || ""); setNoteRequired(!!l.note_required);
+    setNoteLabel(l.note_label || ""); setNoteRequired(!!l.note_required); setIsActive(l.is_active !== false);
     setCommissionPercent(String(l.commission_percent ?? 0)); setCommissionFlat(Number(l.commission_flat) ? String(l.commission_flat) : "");
     setFields((Array.isArray(l.custom_fields) ? l.custom_fields : []).map((f: any) => ({
       id: f.id, label: f.label, type: f.type, required: !!f.required, options: (f.options || []).join(", "),
@@ -123,6 +124,7 @@ const PaymentLinks = () => {
         max_amount: amountMode === "open" && maxAmount ? Number(maxAmount) : null,
         note_label: noteLabel.trim() || null,
         note_required: noteRequired,
+        is_active: isActive,
         custom_fields: fields.filter((f) => f.label.trim()).map((f) => ({
           id: f.id, label: f.label.trim(), type: f.type, required: f.required, position: f.position,
           show_if: f.showIfField && f.showIfValue && fields.some((p) => p.id === f.showIfField && p.id !== f.id) ? { field_id: f.showIfField, value: f.showIfValue } : null,
@@ -138,7 +140,7 @@ const PaymentLinks = () => {
       };
       const { error } = editingId
         ? await supabase.from("payment_links").update(payload).eq("id", editingId)
-        : await supabase.from("payment_links").insert({ ...payload, is_active: true, created_by: uid });
+        : await supabase.from("payment_links").insert({ ...payload, created_by: uid });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -317,6 +319,24 @@ const PaymentLinks = () => {
                 <Input type="number" min={0} value={commissionFlat} onChange={(e) => setCommissionFlat(e.target.value)} placeholder="0" /></div>
             </div>
             <p className="text-xs text-muted-foreground -mt-1">Added on top of the amount, so the payer covers it.</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Note for payer (optional)</Label>
+                <div className="flex items-center gap-2">
+                  <Switch checked={noteRequired} onCheckedChange={setNoteRequired} disabled={!noteLabel.trim()} />
+                  <span className="text-sm">Required</span>
+                </div>
+              </div>
+              <Input value={noteLabel} onChange={(e) => setNoteLabel(e.target.value)} placeholder="e.g. What is this payment for?" />
+              <p className="text-xs text-muted-foreground">If set, the payer can add a short note with their payment.</p>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <Label>Link is active</Label>
+                <p className="text-xs text-muted-foreground">Turn off to stop accepting payments on this link.</p>
+              </div>
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
+            </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Extra information to collect</Label>
