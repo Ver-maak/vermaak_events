@@ -29,6 +29,13 @@
       "when": 1794047603004,
       "tag": "0003_paylink_logo",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794844166602,
+      "tag": "0004_paylink_commission_payer",
+      "breakpoints": true
     }
   ]
 }

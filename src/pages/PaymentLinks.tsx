@@ -53,6 +53,7 @@ const PaymentLinks = () => {
   const [isActive, setIsActive] = useState(true);
   const [commissionPercent, setCommissionPercent] = useState("3.5");
   const [commissionFlat, setCommissionFlat] = useState("");
+  const [commissionPayer, setCommissionPayer] = useState<"payer" | "payee">("payer");
   const [fields, setFields] = useState<DraftField[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -84,7 +85,7 @@ const PaymentLinks = () => {
     setEditingId(null);
     setTitle(""); setSlug(""); setDescription(""); setLogoUrl(""); setUnitAmount(""); setMinAmount(""); setMaxAmount("");
     setNoteLabel(""); setNoteRequired(false); setIsActive(true); setAmountMode("fixed"); setFields([]); setCurrency("UGX");
-    setCommissionPercent("3.5"); setCommissionFlat("");
+    setCommissionPercent("3.5"); setCommissionFlat(""); setCommissionPayer("payer");
   };
   const openEdit = (l: any) => {
     setEditingId(l.id);
@@ -93,6 +94,7 @@ const PaymentLinks = () => {
     setMinAmount(l.min_amount != null ? String(l.min_amount) : ""); setMaxAmount(l.max_amount != null ? String(l.max_amount) : "");
     setNoteLabel(l.note_label || ""); setNoteRequired(!!l.note_required); setIsActive(l.is_active !== false);
     setCommissionPercent(String(l.commission_percent ?? 0)); setCommissionFlat(Number(l.commission_flat) ? String(l.commission_flat) : "");
+    setCommissionPayer(l.commission_payer === "payee" ? "payee" : "payer");
     setFields((Array.isArray(l.custom_fields) ? l.custom_fields : []).map((f: any) => ({
       id: f.id, label: f.label, type: f.type, required: !!f.required, options: (f.options || []).join(", "),
       blocked: Array.isArray(f.blocked_options) ? f.blocked_options : [], blockMessage: f.block_message || "",
@@ -137,6 +139,7 @@ const PaymentLinks = () => {
         })),
         commission_percent: Number(commissionPercent || 0),
         commission_flat: Number(commissionFlat || 0),
+        commission_payer: commissionPayer,
       };
       const { error } = editingId
         ? await supabase.from("payment_links").update(payload).eq("id", editingId)
@@ -317,8 +320,21 @@ const PaymentLinks = () => {
                 <Input type="number" min={0} value={commissionPercent} onChange={(e) => setCommissionPercent(e.target.value)} placeholder="0" /></div>
               <div><Label>Commission flat ({currency})</Label>
                 <Input type="number" min={0} value={commissionFlat} onChange={(e) => setCommissionFlat(e.target.value)} placeholder="0" /></div>
+             </div>
+            <div><Label>Fee paid by</Label>
+              <Select value={commissionPayer} onValueChange={(v) => setCommissionPayer(v as "payer" | "payee")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="payer">Payer (added on top)</SelectItem>
+                  <SelectItem value="payee">Payee (deducted from amount)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <p className="text-xs text-muted-foreground -mt-1">Added on top of the amount, so the payer covers it.</p>
+            <p className="text-xs text-muted-foreground -mt-1">
+              {commissionPayer === "payer"
+                ? "Added on top of the amount, so the payer covers it."
+                : "Deducted from the amount, so the payer pays exactly the link amount and you receive the rest."}
+            </p>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Note for payer (optional)</Label>

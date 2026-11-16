@@ -711,6 +711,7 @@ export type Database = {
         Row: {
           amount_mode: string
           commission_flat: number
+          commission_payer: string
           commission_percent: number
           created_at: string
           created_by: string
@@ -733,6 +734,7 @@ export type Database = {
         Insert: {
           amount_mode?: string
           commission_flat?: number
+          commission_payer?: string
           commission_percent?: number
           created_at?: string
           created_by: string
@@ -755,6 +757,7 @@ export type Database = {
         Update: {
           amount_mode?: string
           commission_flat?: number
+          commission_payer?: string
           commission_percent?: number
           created_at?: string
           created_by?: string

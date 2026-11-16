@@ -80,7 +80,8 @@ const PayLink = () => {
     if (!link || amount <= 0) return 0;
     return Math.max(0, Math.round(amount * (Number(link.commission_percent || 0) / 100) + Number(link.commission_flat || 0)));
   }, [link, amount]);
-  const total = amount + fee;
+  const feeOnPayer = link?.commission_payer !== "payee";
+  const total = feeOnPayer ? amount + fee : amount;
 
   const cardCheck = validateCard(cardNumber);
   const allFields: { id: string; label: string; type: string; required: boolean; options?: string[]; blocked_options?: string[]; block_message?: string; position?: FieldPosition; show_if?: ShowIf | null }[] =
@@ -324,7 +325,7 @@ const PayLink = () => {
                     <span className="text-muted-foreground">Amount</span>
                     <span>{formatMoney(amount, link.currency)}</span>
                   </div>
-                  {fee > 0 && (
+                  {fee > 0 && feeOnPayer && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Service fee</span>
                       <span>{formatMoney(fee, link.currency)}</span>
