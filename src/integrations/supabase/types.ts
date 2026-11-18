@@ -1413,6 +1413,7 @@ export type Database = {
         Args: { _order_id: string }
         Returns: number
       }
+      get_event_short_link: { Args: { _event_id: string }; Returns: string }
       get_payment_provider_decrypted: {
         Args: { _code: string; _enc_key: string }
         Returns: Json
@@ -1463,6 +1464,7 @@ export type Database = {
         Returns: Json
       }
       quote_order_fee: { Args: { _order_id: string }; Returns: Json }
+      resolve_short_link: { Args: { _slug: string }; Returns: string }
       revoke_event_admin: {
         Args: { _event_id: string; _user_id: string }
         Returns: undefined

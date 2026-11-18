@@ -317,13 +317,8 @@ const EventDetail = () => {
                 try {
                   // Reuse an existing short link for this event, or create one
                   const { data: existing } = await (supabase as any)
-                    .from("short_links")
-                    .select("slug")
-                    .eq("event_id", event.id)
-                    .order("created_at", { ascending: true })
-                    .limit(1)
-                    .maybeSingle();
-                  let slug: string | undefined = existing?.slug;
+                    .rpc("get_event_short_link", { _event_id: event.id });
+                  let slug: string | undefined = typeof existing === "string" ? existing : undefined;
                   if (!slug) {
                     const { data: sess } = await supabase.auth.getSession();
                     const uid = sess.session?.user.id;

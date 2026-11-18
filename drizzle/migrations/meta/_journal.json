@@ -36,6 +36,13 @@
       "when": 1794844166602,
       "tag": "0004_paylink_commission_payer",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794978698251,
+      "tag": "0005_tighten_short_links_fee_logs_storage",
+      "breakpoints": true
     }
   ]
 }

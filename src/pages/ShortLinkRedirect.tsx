@@ -12,15 +12,13 @@ const ShortLinkRedirect = () => {
     (async () => {
       if (!slug) return;
       const { data } = await (supabase as any)
-        .from("short_links")
-        .select("target_url")
-        .eq("slug", slug)
-        .maybeSingle();
+        .rpc("resolve_short_link", { _slug: slug });
+      const target = typeof data === "string" ? data : null;
       if (cancelled) return;
-      if (data?.target_url) {
+      if (target) {
         // Fire-and-forget click tracking
         (supabase as any).rpc("increment_short_link_click", { _slug: slug });
-        window.location.replace(data.target_url);
+        window.location.replace(target);
       } else {
         setStatus("notfound");
       }
